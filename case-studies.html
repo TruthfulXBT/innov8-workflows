@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Case Studies — Innov8 Workflows</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0f0f0f; --surface: #161616; --surface2: #1e1e1e; --border: #2a2a2a;
+  --accent: #ea580c; --accent2: #f97316;
+  --node-green: #22c55e; --node-blue: #3b82f6; --node-purple: #a855f7; --node-yellow: #eab308;
+  --text: #f0f0f0; --muted: #666; --muted2: #888;
+  --font-display: 'Bricolage Grotesque', sans-serif; --font-mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-display); overflow-x: hidden; }
+#canvas-bg { position: fixed; inset: 0; z-index: 0; opacity: 0.25; pointer-events: none; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 18px 48px; background: rgba(15,15,15,0.88); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+.nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+.logo-box { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; color: #fff; font-weight: 500; }
+.nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+.nav-links a { color: var(--muted2); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover, .nav-links a.active { color: var(--text); }
+.nav-cta { background: var(--accent) !important; color: #fff !important; padding: 8px 20px; border-radius: 6px; font-weight: 600 !important; font-size: 0.78rem !important; letter-spacing: 0.04em !important; text-transform: uppercase; }
+.nav-cta:hover { background: var(--accent2) !important; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+section { position: relative; z-index: 1; }
+
+.breadcrumb { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 110px 48px 0; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+.breadcrumb a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.breadcrumb a:hover { color: var(--accent); }
+
+.page-hero { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 48px 48px 80px; }
+.page-hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(234,88,12,0.1); border: 1px solid rgba(234,88,12,0.28); border-radius: 100px; padding: 6px 16px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 24px; animation: fadeUp 0.5s ease both; }
+.page-hero h1 { font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 20px; animation: fadeUp 0.5s 0.1s ease both; }
+.page-hero h1 span { color: var(--accent); }
+.page-hero p { font-size: 1.1rem; color: var(--muted2); max-width: 600px; line-height: 1.7; font-weight: 400; animation: fadeUp 0.5s 0.2s ease both; }
+
+.btn-primary { background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; display: inline-block; font-family: var(--font-display); }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(234,88,12,0.35); }
+.btn-ghost { color: var(--muted2); padding: 14px 24px; border-radius: 8px; font-weight: 500; font-size: 0.95rem; text-decoration: none; border: 1px solid var(--border); transition: color 0.2s, border-color 0.2s, transform 0.15s; display: inline-block; }
+.btn-ghost:hover { color: var(--text); border-color: var(--muted); transform: translateY(-2px); }
+
+.section-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.section-label::before { content: ''; display: inline-block; width: 20px; height: 1.5px; background: var(--accent); }
+.section-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+
+/* CASE STUDY BLOCKS */
+.cases-wrapper { max-width: 1100px; margin: 0 auto; padding: 0 48px 100px; position: relative; z-index: 1; }
+
+.case-block { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-bottom: 32px; transition: border-color 0.25s; }
+.case-block:hover { border-color: rgba(234,88,12,0.35); }
+
+.case-header { padding: 40px 48px 32px; display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: start; border-bottom: 1px solid var(--border); }
+.case-industry { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.case-industry-dot { width: 6px; height: 6px; border-radius: 50%; }
+.case-title { font-size: clamp(1.4rem, 2.5vw, 2rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 12px; }
+.case-challenge { font-size: 0.9rem; color: var(--muted2); line-height: 1.65; max-width: 520px; }
+.case-stats { display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+.case-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; text-align: center; min-width: 120px; }
+.case-stat-num { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; }
+.case-stat-label { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+.case-body { padding: 36px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+
+.case-section-label { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+.case-problem p { font-size: 0.875rem; color: var(--muted2); line-height: 1.7; }
+
+.case-solution-steps { display: flex; flex-direction: column; gap: 10px; }
+.solution-step { display: flex; align-items: flex-start; gap: 12px; }
+.solution-step-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.solution-step-text { font-size: 0.85rem; color: var(--muted2); line-height: 1.5; padding-top: 4px; }
+.solution-step-text strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; }
+
+.case-footer { padding: 24px 48px; background: var(--bg); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.case-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.case-tag { font-family: var(--font-mono); font-size: 0.6rem; padding: 4px 10px; border-radius: 100px; background: var(--surface); border: 1px solid var(--border); color: var(--muted2); }
+.case-result-highlight { font-family: var(--font-mono); font-size: 0.7rem; color: var(--node-green); display: flex; align-items: center; gap: 6px; }
+.case-result-highlight::before { content: '✓'; font-weight: 700; }
+
+/* FLOW DIAGRAMS inside case studies */
+.mini-flow { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.mf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.mf-row:last-child { margin-bottom: 0; }
+.mf-node { background: var(--bg); border: 1.5px solid var(--border); border-radius: 7px; padding: 8px 12px; display: flex; align-items: center; gap: 7px; flex: 1; }
+.mf-node-icon { width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+.mf-node-name { font-size: 0.72rem; font-weight: 600; color: var(--text); }
+.mf-node-sub { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted2); }
+.mf-arrow { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.mf-vert-conn { display: flex; justify-content: flex-start; padding-left: 22px; margin: 2px 0; }
+.mf-vert-line { width: 2px; height: 12px; background: var(--border); }
+
+/* RESULTS GRID */
+.results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+.result-chip { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+.result-chip-num { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+.result-chip-label { font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted); letter-spacing: 0.05em; }
+
+/* CTA */
+.cta-band { background: var(--surface); border-top: 1px solid var(--border); position: relative; z-index: 1; }
+.cta-band-inner { max-width: 1100px; margin: 0 auto; padding: 80px 48px; display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+.cta-band h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.cta-band h2 span { color: var(--accent); }
+.cta-band p { color: var(--muted2); font-size: 0.95rem; line-height: 1.6; margin-top: 10px; max-width: 420px; }
+.cta-band-actions { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
+
+
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); text-decoration: none; transition: color 0.2s; letter-spacing: 0.04em; }
+  .footer-links a:hover { color: var(--accent); }
+footer { border-top: 1px solid var(--border); padding: 48px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+.footer-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.95rem; color: var(--muted2); text-decoration: none; }
+.footer-right { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+
+@media (max-width: 900px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  .breadcrumb, .page-hero, .cases-wrapper { padding-left: 24px; padding-right: 24px; }
+  .case-header { grid-template-columns: 1fr; gap: 24px; padding: 28px 24px 24px; }
+  .case-stats { flex-direction: row; }
+  .case-body { grid-template-columns: 1fr; gap: 28px; padding: 28px 24px; }
+  .case-footer { padding: 20px 24px; }
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .cta-band-inner { flex-direction: column; }
+  footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+<canvas id="canvas-bg"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="logo-box">i8</div>
+    Innov8 Workflows
+  </a>
+  <ul class="nav-links">
+    <li><a href="about.html">About</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="services.html">Services</a></li>
+    <li><a href="how-it-works.html">How It Works</a></li>
+    <li><a href="consultancy.html">Consultancy</a></li>
+    <li><a href="consultancy.html#contact" class="nav-cta">Get Started</a></li>
+  </ul>
+</nav>
+
+<div class="breadcrumb">
+  <a href="index.html">Home</a>
+  <span>/</span>
+  <span style="color:var(--text)">Case Studies</span>
+</div>
+
+<div class="page-hero">
+  <div class="page-hero-badge">Case Studies</div>
+  <h1>Real workflows.<br/><span>Real results.</span></h1>
+  <p>Examples of the automation systems, websites, and AI integrations we've built — and the measurable difference they made. All examples are representative of the work we do.</p>
+</div>
+
+<div class="cases-wrapper">
+
+  <!-- CASE STUDY 1 -->
+  <div class="case-block reveal">
+    <div class="case-header">
+      <div>
+        <div class="case-industry">
+          <div class="case-industry-dot" style="background:var(--node-blue)"></div>
+          <span style="color:var(--node-blue)">Professional Services</span>
+        </div>
+        <div class="case-title">Lead capture to CRM to invoice — fully automated for a consultancy firm</div>
+        <p class="case-challenge">A UK-based management consultancy was manually processing every new enquiry — copying contact details into their CRM, creating invoices by hand in Xero, and sending follow-up emails one at a time. Each new lead took 25–30 minutes of admin.</p>
+      </div>
+      <div class="case-stats">
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--node-green)">92<span style="font-size:1.2rem">%</span></div>
+          <div class="case-stat-label">Time saved per lead</div>
+        </div>
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--accent)">2<span style="font-size:1.2rem">min</span></div>
+          <div class="case-stat-label">Response time</div>
+        </div>
+      </div>
+    </div>
+    <div class="case-body">
+      <div class="case-problem">
+        <div class="case-section-label">The problem</div>
+        <p>Every enquiry through their Jotform contact form required someone to manually: check the form submission, copy details into HubSpot, create a contact record, draft and send a confirmation email, and create a draft invoice in Xero. With 15–20 new enquiries per week, this was consuming nearly a full day of admin time. Leads were also slipping through — enquiries received on Friday afternoons weren't followed up until Monday.</p>
+      </div>
+      <div>
+        <div class="case-section-label">The solution</div>
+        <div class="case-solution-steps">
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,88,12,0.12)">📋</div>
+            <div class="solution-step-text"><strong>Jotform trigger</strong>New form submission instantly kicks off the workflow — no delay, no manual check.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(59,130,246,0.12)">👤</div>
+            <div class="solution-step-text"><strong>HubSpot contact created</strong>Contact record created automatically with all form data mapped to the correct fields.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(168,85,247,0.12)">🤖</div>
+            <div class="solution-step-text"><strong>AI lead scoring</strong>An AI agent reads the enquiry message and scores intent — routing hot leads to the senior team immediately.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,179,8,0.12)">💰</div>
+            <div class="solution-step-text"><strong>Xero draft invoice</strong>A draft invoice is created automatically with the client's details pre-populated.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(34,197,94,0.12)">📧</div>
+            <div class="solution-step-text"><strong>Confirmation email sent</strong>Personalised confirmation email sent to the prospect within 2 minutes of their enquiry.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="case-footer">
+      <div class="case-tags">
+        <span class="case-tag">Jotform</span>
+        <span class="case-tag">HubSpot</span>
+        <span class="case-tag">Xero</span>
+        <span class="case-tag">AI Lead Scoring</span>
+        <span class="case-tag">Workflow Automation</span>
+      </div>
+      <div class="case-result-highlight">25 mins of admin per lead reduced to under 2 minutes</div>
+    </div>
+  </div>
+
+  <!-- CASE STUDY 2 -->
+  <div class="case-block reveal">
+    <div class="case-header">
+      <div>
+        <div class="case-industry">
+          <div class="case-industry-dot" style="background:var(--node-green)"></div>
+          <span style="color:var(--node-green)">E-commerce &amp; Retail</span>
+        </div>
+        <div class="case-title">Branded website and AI chatbot driving 24/7 lead capture for an online retailer</div>
+        <p class="case-challenge">A growing UK retailer had an outdated website that wasn't converting visitors and no way to capture leads outside business hours. Their team was manually responding to the same product questions repeatedly.</p>
+      </div>
+      <div class="case-stats">
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--node-green)">3<span style="font-size:1.2rem">x</span></div>
+          <div class="case-stat-label">Lead conversion</div>
+        </div>
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--accent)">24/7</div>
+          <div class="case-stat-label">Availability</div>
+        </div>
+      </div>
+    </div>
+    <div class="case-body">
+      <div class="case-problem">
+        <div class="case-section-label">The problem</div>
+        <p>Their existing website was slow, unbranded, and not mobile-friendly. Visitors were bouncing without enquiring. The small team spent significant time each day answering the same product questions by email and phone — questions that could be answered automatically. Outside business hours, enquiries were simply lost.</p>
+      </div>
+      <div>
+        <div class="case-section-label">The solution</div>
+        <div class="case-solution-steps">
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,88,12,0.12)">🎨</div>
+            <div class="solution-step-text"><strong>New branded website</strong>Custom-designed, mobile-responsive site built to reflect their brand and drive enquiries.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(168,85,247,0.12)">💬</div>
+            <div class="solution-step-text"><strong>AI chatbot deployed</strong>Trained on their full product catalogue and FAQs — answering questions and capturing leads around the clock.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(59,130,246,0.12)">👤</div>
+            <div class="solution-step-text"><strong>CRM integration</strong>Every chatbot lead automatically creates a contact in their CRM with conversation context attached.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(6,182,212,0.12)">📨</div>
+            <div class="solution-step-text"><strong>Instant team notification</strong>High-intent leads trigger an immediate Slack alert to the sales team — even outside hours.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="case-footer">
+      <div class="case-tags">
+        <span class="case-tag">Website Design</span>
+        <span class="case-tag">AI Chatbot</span>
+        <span class="case-tag">CRM Integration</span>
+        <span class="case-tag">Slack</span>
+        <span class="case-tag">Lead Automation</span>
+      </div>
+      <div class="case-result-highlight">Lead conversion tripled within 30 days of launch</div>
+    </div>
+  </div>
+
+  <!-- CASE STUDY 3 -->
+  <div class="case-block reveal">
+    <div class="case-header">
+      <div>
+        <div class="case-industry">
+          <div class="case-industry-dot" style="background:var(--node-purple)"></div>
+          <span style="color:var(--node-purple)">Financial Services</span>
+        </div>
+        <div class="case-title">End-to-end client onboarding automation for an independent financial adviser</div>
+        <p class="case-challenge">An IFA practice was spending 3–4 hours onboarding each new client — collecting documents, creating records across multiple systems, and manually sending welcome packs and compliance documentation.</p>
+      </div>
+      <div class="case-stats">
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--node-green)">4<span style="font-size:1.2rem">hrs</span></div>
+          <div class="case-stat-label">Saved per client</div>
+        </div>
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--accent)">0</div>
+          <div class="case-stat-label">Manual steps</div>
+        </div>
+      </div>
+    </div>
+    <div class="case-body">
+      <div class="case-problem">
+        <div class="case-section-label">The problem</div>
+        <p>Every new client required the adviser to: send a welcome email manually, chase document submissions, create records in their CRM and compliance system separately, generate a client folder in Google Drive, and send a welcome pack. With growing client numbers this was becoming unsustainable — and the manual nature introduced errors and compliance risks.</p>
+      </div>
+      <div>
+        <div class="case-section-label">The solution</div>
+        <div class="case-solution-steps">
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(168,85,247,0.12)">📝</div>
+            <div class="solution-step-text"><strong>Jotform onboarding form</strong>New client completes a structured Jotform — triggering the entire onboarding workflow automatically.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(59,130,246,0.12)">🗂️</div>
+            <div class="solution-step-text"><strong>Google Drive folder created</strong>A named client folder is created automatically with all submitted documents organised inside.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,88,12,0.12)">👤</div>
+            <div class="solution-step-text"><strong>CRM &amp; compliance records</strong>Client record created in both systems simultaneously — correctly mapped, no duplication.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(34,197,94,0.12)">📧</div>
+            <div class="solution-step-text"><strong>Automated welcome pack</strong>Personalised welcome email with compliance documents sent immediately upon completion.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="case-footer">
+      <div class="case-tags">
+        <span class="case-tag">Jotform</span>
+        <span class="case-tag">Google Drive</span>
+        <span class="case-tag">CRM Integration</span>
+        <span class="case-tag">Compliance Automation</span>
+        <span class="case-tag">Document Management</span>
+      </div>
+      <div class="case-result-highlight">4 hours of manual onboarding reduced to zero</div>
+    </div>
+  </div>
+
+  <!-- CASE STUDY 4 -->
+  <div class="case-block reveal">
+    <div class="case-header">
+      <div>
+        <div class="case-industry">
+          <div class="case-industry-dot" style="background:var(--node-yellow)"></div>
+          <span style="color:var(--node-yellow)">Trade &amp; Construction</span>
+        </div>
+        <div class="case-title">Quote request to job booking workflow for a trades business</div>
+        <p class="case-challenge">A growing trades business was missing leads because quote requests submitted via their website weren't being followed up quickly enough. The team was also re-entering job details manually into three different systems.</p>
+      </div>
+      <div class="case-stats">
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--node-green)">85<span style="font-size:1.2rem">%</span></div>
+          <div class="case-stat-label">Faster response</div>
+        </div>
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--accent)">3→1</div>
+          <div class="case-stat-label">Systems synced</div>
+        </div>
+      </div>
+    </div>
+    <div class="case-body">
+      <div class="case-problem">
+        <div class="case-section-label">The problem</div>
+        <p>Quote requests came through a website form but were only checked a few times a day. Response times averaged 4–6 hours — by which time many customers had already booked a competitor. Job details also had to be manually entered into their CRM, their invoicing system, and their job scheduling tool separately, taking 15–20 minutes per booking and introducing frequent errors.</p>
+      </div>
+      <div>
+        <div class="case-section-label">The solution</div>
+        <div class="case-solution-steps">
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,88,12,0.12)">🌐</div>
+            <div class="solution-step-text"><strong>Website form trigger</strong>Quote request form submission instantly triggers the workflow — response within minutes, not hours.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(6,182,212,0.12)">📱</div>
+            <div class="solution-step-text"><strong>Instant SMS &amp; Slack alert</strong>Team receives an immediate notification with the job details — no more missed leads.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(59,130,246,0.12)">🔄</div>
+            <div class="solution-step-text"><strong>Three systems synced</strong>CRM, invoicing (FreeAgent), and job scheduler all updated simultaneously from one form submission.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(34,197,94,0.12)">📧</div>
+            <div class="solution-step-text"><strong>Auto-acknowledgement</strong>Customer receives an immediate acknowledgement email confirming their request and next steps.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="case-footer">
+      <div class="case-tags">
+        <span class="case-tag">Website Forms</span>
+        <span class="case-tag">FreeAgent</span>
+        <span class="case-tag">CRM Integration</span>
+        <span class="case-tag">SMS Notifications</span>
+        <span class="case-tag">Slack</span>
+      </div>
+      <div class="case-result-highlight">Response time cut from 4–6 hours to under 5 minutes</div>
+    </div>
+  </div>
+
+  <!-- CASE STUDY 5 -->
+  <div class="case-block reveal">
+    <div class="case-header">
+      <div>
+        <div class="case-industry">
+          <div class="case-industry-dot" style="background:var(--accent)"></div>
+          <span style="color:var(--accent2)">Marketing Agency</span>
+        </div>
+        <div class="case-title">Automated client reporting pipeline replacing 8 hours of weekly manual work</div>
+        <p class="case-challenge">A digital marketing agency was manually pulling data from Google Ads, Meta, and their CRM every week to compile client performance reports — a process taking 8+ hours per week across their team.</p>
+      </div>
+      <div class="case-stats">
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--node-green)">8<span style="font-size:1.2rem">hrs</span></div>
+          <div class="case-stat-label">Saved weekly</div>
+        </div>
+        <div class="case-stat">
+          <div class="case-stat-num" style="color:var(--accent)">100<span style="font-size:1.2rem">%</span></div>
+          <div class="case-stat-label">Automated</div>
+        </div>
+      </div>
+    </div>
+    <div class="case-body">
+      <div class="case-problem">
+        <div class="case-section-label">The problem</div>
+        <p>Each Monday, the team spent the morning manually logging into multiple ad platforms, downloading data, copying figures into a spreadsheet template, writing commentary, and emailing reports to clients. The process was error-prone, time-consuming, and meant the team started every week behind. As client numbers grew, the problem was getting worse.</p>
+      </div>
+      <div>
+        <div class="case-section-label">The solution</div>
+        <div class="case-solution-steps">
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(234,88,12,0.12)">⏰</div>
+            <div class="solution-step-text"><strong>Scheduled Monday trigger</strong>Workflow runs automatically every Monday at 7am — reports ready before the team arrives.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(59,130,246,0.12)">📊</div>
+            <div class="solution-step-text"><strong>Data pulled automatically</strong>Performance data fetched from Google Ads, Meta, and CRM via API — no manual logins required.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(168,85,247,0.12)">🤖</div>
+            <div class="solution-step-text"><strong>AI commentary generated</strong>An AI agent analyses the data and writes plain-English performance commentary for each client.</div>
+          </div>
+          <div class="solution-step">
+            <div class="solution-step-icon" style="background:rgba(34,197,94,0.12)">📧</div>
+            <div class="solution-step-text"><strong>Reports emailed automatically</strong>Branded PDF reports emailed to each client automatically — no human involvement needed.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="case-footer">
+      <div class="case-tags">
+        <span class="case-tag">Google Ads API</span>
+        <span class="case-tag">Meta API</span>
+        <span class="case-tag">AI Reporting</span>
+        <span class="case-tag">Scheduled Automation</span>
+        <span class="case-tag">PDF Generation</span>
+      </div>
+      <div class="case-result-highlight">8 hours of weekly manual reporting fully eliminated</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CTA -->
+<div class="cta-band">
+  <div class="cta-band-inner reveal">
+    <div>
+      <h2>See yourself<br/><span>in these stories?</span></h2>
+      <p>If any of these challenges sound familiar, chances are we can help. Start with a free consultation — we'll identify your biggest automation opportunities and show you what's possible.</p>
+    </div>
+    <div class="cta-band-actions">
+      <a href="consultancy.html" class="btn-primary">Book Free Consultation</a>
+      <a href="services.html" class="btn-ghost">View Services</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="index.html" class="footer-logo">
+    <div class="logo-box" style="width:26px;height:26px;font-size:11px">i8</div>
+    Innov8 Workflows
+  </a>
+  <div class="footer-links">
+    <a href="privacy-policy.html">Privacy Policy</a>
+    <a href="consultancy.html#contact">Contact</a>
+  </div>
+  <div class="footer-right">© 2025 Innov8 Workflows · Built to automate.</div>
+</footer>
+
+<script>
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, lines = [];
+  const SP = 38;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    lines = [];
+    for (let i = 0; i < 8; i++) lines.push(newLine());
+  }
+  function newLine() {
+    return { col: Math.floor(Math.random()*Math.ceil(W/SP)), row: Math.floor(Math.random()*Math.ceil(H/SP)), len: Math.floor(Math.random()*5)+3, dir: Math.random()>0.5?'h':'v', progress: Math.random(), speed: 0.003+Math.random()*0.004, color: Math.random()>0.5?'#ea580c':'#3b82f6' };
+  }
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    const cols=Math.ceil(W/SP)+1, rows=Math.ceil(H/SP)+1;
+    ctx.fillStyle='#2a2a2a';
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) { ctx.beginPath(); ctx.arc(c*SP,r*SP,1,0,Math.PI*2); ctx.fill(); }
+    for (let l of lines) {
+      l.progress+=l.speed;
+      if (l.progress>1) { Object.assign(l,newLine()); l.progress=0; }
+      const sx=l.col*SP,sy=l.row*SP,ex=l.dir==='h'?sx+l.len*SP:sx,ey=l.dir==='v'?sy+l.len*SP:sy;
+      const gx=sx+(ex-sx)*l.progress,gy=sy+(ey-sy)*l.progress;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(gx,gy); ctx.strokeStyle=l.color; ctx.lineWidth=1.5; ctx.globalAlpha=0.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(gx,gy,3,0,Math.PI*2); ctx.fillStyle=l.color; ctx.globalAlpha=0.9; ctx.fill(); ctx.globalAlpha=1;
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { setTimeout(()=>e.target.classList.add('visible'),60); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+
+<script src="cookie-consent.js"></script>
+</body>
+</html>

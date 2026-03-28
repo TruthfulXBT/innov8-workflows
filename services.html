@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Services — Innov8 Workflows</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0f0f0f; --surface: #161616; --surface2: #1e1e1e; --border: #2a2a2a;
+  --accent: #ea580c; --accent2: #f97316;
+  --node-green: #22c55e; --node-blue: #3b82f6; --node-purple: #a855f7; --node-yellow: #eab308;
+  --text: #f0f0f0; --muted: #666; --muted2: #888;
+  --font-display: 'Bricolage Grotesque', sans-serif; --font-mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-display); overflow-x: hidden; }
+#canvas-bg { position: fixed; inset: 0; z-index: 0; opacity: 0.25; pointer-events: none; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 18px 48px; background: rgba(15,15,15,0.88); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+.nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+.logo-box { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; color: #fff; font-weight: 500; }
+.nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+.nav-links a { color: var(--muted2); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover, .nav-links a.active { color: var(--text); }
+.nav-cta { background: var(--accent) !important; color: #fff !important; padding: 8px 20px; border-radius: 6px; font-weight: 600 !important; font-size: 0.78rem !important; letter-spacing: 0.04em !important; text-transform: uppercase; }
+.nav-cta:hover { background: var(--accent2) !important; }
+
+.breadcrumb { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 110px 48px 0; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+.breadcrumb a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.breadcrumb a:hover { color: var(--accent); }
+
+.page-hero { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 48px 48px 80px; }
+.page-hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(234,88,12,0.1); border: 1px solid rgba(234,88,12,0.28); border-radius: 100px; padding: 6px 16px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 24px; animation: fadeUp 0.5s ease both; }
+.page-hero h1 { font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 20px; animation: fadeUp 0.5s 0.1s ease both; }
+.page-hero h1 span { color: var(--accent); }
+.page-hero p { font-size: 1.1rem; color: var(--muted2); max-width: 600px; line-height: 1.7; font-weight: 400; animation: fadeUp 0.5s 0.2s ease both; }
+
+/* FLEXIBLE MODEL NOTICE */
+.flex-notice { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; animation: fadeUp 0.5s 0.3s ease both; }
+.flex-pill { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; border: 1px solid; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+section { position: relative; z-index: 1; }
+.divider { border: none; border-top: 1px solid var(--border); }
+
+.btn-primary { background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; display: inline-block; font-family: var(--font-display); }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(234,88,12,0.35); }
+.btn-ghost { color: var(--muted2); padding: 14px 24px; border-radius: 8px; font-weight: 500; font-size: 0.95rem; text-decoration: none; border: 1px solid var(--border); transition: color 0.2s, border-color 0.2s, transform 0.15s; display: inline-block; }
+.btn-ghost:hover { color: var(--text); border-color: var(--muted); transform: translateY(-2px); }
+
+/* SERVICE BLOCKS */
+.service-block { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; padding: 80px 48px; max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
+.service-block.reverse { direction: rtl; }
+.service-block.reverse > * { direction: ltr; }
+.service-block-label { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.service-block-label::before { content: ''; display: inline-block; width: 16px; height: 1.5px; background: var(--accent); }
+.service-block-label.purple { color: var(--node-purple); }
+.service-block-label.purple::before { background: var(--node-purple); }
+.service-block h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+.service-block h2 span { color: var(--accent); }
+.service-block h2 span.purple { color: var(--node-purple); }
+.lead { font-size: 1rem; color: var(--muted2); line-height: 1.7; margin-bottom: 28px; font-weight: 400; }
+.works-with { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); margin-bottom: 28px; }
+.works-with span { color: var(--node-green); }
+
+.feature-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.feature-item { display: flex; align-items: flex-start; gap: 12px; }
+.feature-icon { width: 22px; height: 22px; border-radius: 6px; background: rgba(234,88,12,0.12); border: 1px solid rgba(234,88,12,0.2); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 2px; color: var(--accent); }
+.feature-icon.purple { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.2); color: var(--node-purple); }
+.feature-item strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; font-size: 0.875rem; }
+.feature-item p { font-size: 0.875rem; color: var(--muted2); line-height: 1.5; }
+.service-link { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: gap 0.2s; }
+.service-link:hover { gap: 14px; }
+
+/* VISUAL CARDS */
+.visual-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; position: relative; overflow: hidden; }
+.visual-card.purple-tint { border-color: rgba(168,85,247,0.25); background: linear-gradient(160deg, rgba(168,85,247,0.06) 0%, var(--surface) 60%); }
+.visual-card::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; }
+.visual-card-inner { position: relative; z-index: 1; }
+
+/* browser mock */
+.browser-mock { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.browser-bar { background: var(--bg); padding: 10px 14px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; }
+.browser-url { flex: 1; background: var(--surface); border-radius: 4px; padding: 4px 10px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); margin-left: 8px; }
+.browser-body { padding: 20px; }
+.mock-hero-bar { height: 10px; background: var(--accent); border-radius: 4px; width: 60%; margin-bottom: 8px; opacity: 0.8; }
+.mock-sub-bar { height: 6px; background: var(--border); border-radius: 4px; width: 80%; margin-bottom: 6px; }
+.mock-sub-bar.short { width: 50%; }
+.mock-btn { display: inline-block; background: var(--accent); border-radius: 4px; padding: 6px 14px; margin-top: 10px; }
+.mock-btn-inner { height: 6px; background: rgba(255,255,255,0.6); border-radius: 2px; width: 60px; }
+.mock-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 16px; }
+.mock-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+.mock-card-icon { width: 20px; height: 20px; border-radius: 4px; margin-bottom: 6px; }
+.mock-card-line { height: 5px; background: var(--border); border-radius: 2px; margin-bottom: 4px; }
+.mock-card-line.short { width: 60%; }
+
+/* flow diagram */
+.flow-visual { display: flex; flex-direction: column; gap: 12px; }
+.flow-node { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color 0.3s; }
+.flow-node:hover { border-color: var(--accent); }
+.flow-node-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.flow-node-label { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); }
+.flow-node-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.flow-connector { padding-left: 24px; }
+.flow-line { width: 2px; height: 14px; background: var(--border); position: relative; }
+.flow-line::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--muted); }
+
+/* trigger chips */
+.trigger-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.trigger-chip { display: flex; align-items: center; gap: 6px; background: rgba(234,88,12,0.08); border: 1px solid rgba(234,88,12,0.2); border-radius: 6px; padding: 6px 12px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent2); }
+
+/* chatbot demo */
+.chat-demo { background: var(--bg); border: 1px solid rgba(168,85,247,0.25); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.chat-demo-bar { display: flex; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.chat-demo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--node-purple); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.chat-demo-title { font-size: 0.78rem; font-weight: 600; }
+.chat-demo-sub { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); margin-left: auto; }
+.chat-msg { padding: 10px 14px; border-radius: 10px; font-size: 0.8rem; line-height: 1.5; max-width: 85%; }
+.chat-msg.user { background: var(--surface2); border: 1px solid var(--border); align-self: flex-end; color: var(--text); }
+.chat-msg.bot { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2); color: var(--text); }
+.chat-typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+.chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--node-purple); animation: typing 1.2s infinite; }
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-4px);opacity:1} }
+
+/* AI visual */
+.ai-visual { display: flex; flex-direction: column; gap: 14px; }
+.ai-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted2); line-height: 1.6; }
+.ai-input span { color: var(--accent2); }
+.ai-process { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.2); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+.ai-pulse { width: 8px; height: 8px; background: var(--node-purple); border-radius: 50%; animation: pulse 1.5s infinite; flex-shrink: 0; }
+.ai-process-text { font-family: var(--font-mono); font-size: 0.7rem; color: var(--node-purple); }
+.ai-outputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ai-output-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted2); display: flex; align-items: center; gap: 6px; }
+.ai-output-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* integration grid */
+.int-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.int-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color 0.3s, transform 0.3s; }
+.int-chip:hover { border-color: var(--accent); transform: translateY(-2px); }
+.int-chip-icon { font-size: 18px; }
+.int-chip-name { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted2); text-align: center; }
+
+/* ops bars */
+.ops-bars { display: flex; flex-direction: column; gap: 14px; }
+.ops-bar-row { display: flex; flex-direction: column; gap: 6px; }
+.ops-bar-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); }
+.ops-bar-track { height: 8px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+.ops-bar-fill { height: 100%; border-radius: 100px; animation: fillBar 2s ease both; }
+@keyframes fillBar { from{width:0} }
+.ops-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; padding: 4px 10px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--node-green); margin-top: 8px; }
+
+/* monitor */
+.monitor-visual { display: flex; flex-direction: column; gap: 10px; }
+.monitor-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.monitor-stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.monitor-stat-val { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
+.monitor-stat-label { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em; }
+.monitor-log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.log-line { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted2); line-height: 2; display: flex; align-items: center; gap: 8px; }
+.log-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* CTA band */
+.cta-band { background: var(--surface); border-top: 1px solid var(--border); position: relative; z-index: 1; }
+.cta-band-inner { max-width: 1100px; margin: 0 auto; padding: 80px 48px; display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+.cta-band h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.cta-band h2 span { color: var(--accent); }
+.cta-band p { color: var(--muted2); font-size: 0.95rem; line-height: 1.6; margin-top: 10px; max-width: 420px; }
+.cta-band-actions { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
+
+
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); text-decoration: none; transition: color 0.2s; letter-spacing: 0.04em; }
+  .footer-links a:hover { color: var(--accent); }
+footer { border-top: 1px solid var(--border); padding: 48px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+.footer-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.95rem; color: var(--muted2); text-decoration: none; }
+.footer-right { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+
+@media (max-width: 900px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  .breadcrumb, .page-hero { padding-left: 24px; padding-right: 24px; }
+  .service-block { grid-template-columns: 1fr; gap: 40px; padding: 60px 24px; }
+  .service-block.reverse { direction: ltr; }
+  footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
+  .cta-band-inner { flex-direction: column; }
+  .monitor-stat-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<canvas id="canvas-bg"></canvas>
+
+<nav>
+  <a href="innov8-workflows.html" class="nav-logo">
+    <div class="logo-box">i8</div>
+    Innov8 Workflows
+  </a>
+  <ul class="nav-links">
+    <li><a href="about.html">About</a></li>
+    <li><a href="services.html" class="active">Services</a></li>
+    <li><a href="how-it-works.html">How It Works</a></li>
+    <li><a href="consultancy.html">Consultancy</a></li>
+    <li><a href="innov8-workflows.html#contact" class="nav-cta">Get Started</a></li>
+  </ul>
+</nav>
+
+<div class="breadcrumb">
+  <a href="innov8-workflows.html">Home</a>
+  <span>/</span>
+  <span style="color:var(--text)">Services</span>
+</div>
+
+<div class="page-hero">
+  <div class="page-hero-badge">What We Build</div>
+  <h1>Every layer your<br/><span>business needs.</span></h1>
+  <p>A branded website, intelligent automation, AI chatbots, and deep integrations — built fresh, or layered straight onto your existing site. We work around what you already have.</p>
+  <div class="flex-notice">
+    <div class="flex-pill" style="background:rgba(234,88,12,0.08);border-color:rgba(234,88,12,0.25);color:var(--muted2)">
+      <span style="font-size:14px">🆕</span> <strong style="color:var(--text)">Starting fresh?</strong>&nbsp;Full website + automation build
+    </div>
+    <div class="flex-pill" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);color:var(--muted2)">
+      <span style="font-size:14px">⚡</span> <strong style="color:var(--text)">Have a site?</strong>&nbsp;Automation &amp; AI added on top
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 1: Branded Websites -->
+<div class="service-block reveal" id="websites">
+  <div>
+    <div class="service-block-label">Service 01</div>
+    <h2>Branded<br/><span>Website Design</span></h2>
+    <p class="lead">Your website is the foundation of everything we build together. We design and develop custom, fully responsive sites that capture your brand and convert your visitors — and that are built to plug into automation from day one.</p>
+    <p class="works-with"><span>✓ Optional</span> — automate workflows on top, or keep it standalone</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Custom Design</strong><p>No templates. Every site is designed from scratch to match your brand identity, tone, and audience.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Conversion-Focused</strong><p>Every layout decision is made with your goals in mind — enquiries, bookings, or sales.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Automation-Ready</strong><p>Built from day one to connect to your CRM, finance tools, AI chatbot, and workflow layer — whenever you're ready.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link">Book a free consultation →</a>
+  </div>
+  <div class="visual-card">
+    <div class="visual-card-inner">
+      <div class="browser-mock">
+        <div class="browser-bar">
+          <div class="browser-dot" style="background:#ff5f57"></div>
+          <div class="browser-dot" style="background:#ffbd2e"></div>
+          <div class="browser-dot" style="background:#28c840"></div>
+          <div class="browser-url">yourbusiness.com</div>
+        </div>
+        <div class="browser-body">
+          <div class="mock-hero-bar"></div>
+          <div class="mock-sub-bar"></div>
+          <div class="mock-sub-bar short"></div>
+          <div class="mock-btn"><div class="mock-btn-inner"></div></div>
+          <div class="mock-cards">
+            <div class="mock-card"><div class="mock-card-icon" style="background:rgba(234,88,12,0.15)"></div><div class="mock-card-line"></div><div class="mock-card-line short"></div></div>
+            <div class="mock-card"><div class="mock-card-icon" style="background:rgba(59,130,246,0.15)"></div><div class="mock-card-line"></div><div class="mock-card-line short"></div></div>
+            <div class="mock-card"><div class="mock-card-icon" style="background:rgba(168,85,247,0.15)"></div><div class="mock-card-line"></div><div class="mock-card-line short"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <span style="font-family:var(--font-mono);font-size:0.65rem;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--node-green);padding:4px 10px;border-radius:4px">✓ Mobile responsive</span>
+        <span style="font-family:var(--font-mono);font-size:0.65rem;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:var(--node-blue);padding:4px 10px;border-radius:4px">✓ SEO optimised</span>
+        <span style="font-family:var(--font-mono);font-size:0.65rem;background:rgba(234,88,12,0.1);border:1px solid rgba(234,88,12,0.2);color:var(--accent2);padding:4px 10px;border-radius:4px">✓ Automation-ready</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 2: Workflow Automation -->
+<div class="service-block reverse reveal" id="automation">
+  <div>
+    <div class="service-block-label">Service 02</div>
+    <h2>Workflow<br/><span>Automation</span></h2>
+    <p class="lead">Connect your forms, website, or any existing tool to the rest of your business stack — automatically. Whether you have a branded site we built or one you already own, we can plug straight in.</p>
+    <p class="works-with"><span>✓ Works with</span> — any existing website, Jotform, Google Forms, Typeform, Tally, webhooks &amp; more</p>
+    <div class="trigger-chips">
+      <div class="trigger-chip">📋 Jotform</div>
+      <div class="trigger-chip">📝 Google Forms</div>
+      <div class="trigger-chip">🟣 Typeform</div>
+      <div class="trigger-chip">📊 Tally</div>
+      <div class="trigger-chip">🌐 Contact Forms</div>
+      <div class="trigger-chip">⚡ Webhooks</div>
+    </div>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Any Form as a Trigger</strong><p>Jotform, Google Forms, Typeform, Tally, or your own site forms — any submission can kick off an automated pipeline instantly.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Multi-System Pipelines</strong><p>Data flows from your trigger into your CRM, finance tools, email platform, and beyond — without anyone touching it.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Error Handling Built-In</strong><p>Every workflow includes fallback logic and alerting so nothing slips through the cracks.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link">Book a free consultation →</a>
+  </div>
+  <div class="visual-card">
+    <div class="visual-card-inner">
+      <div class="flow-visual">
+        <div class="flow-node" style="border-color:rgba(234,88,12,0.4)">
+          <div class="flow-node-icon" style="background:rgba(234,88,12,0.15)">📋</div>
+          <div><div class="flow-node-label">trigger · jotform / google forms / typeform</div><div class="flow-node-name">Form Submitted</div></div>
+        </div>
+        <div class="flow-connector"><div class="flow-line"></div></div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background:rgba(59,130,246,0.15)">👤</div>
+          <div><div class="flow-node-label">action</div><div class="flow-node-name">Create CRM Contact</div></div>
+        </div>
+        <div class="flow-connector"><div class="flow-line"></div></div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background:rgba(234,179,8,0.15)">💰</div>
+          <div><div class="flow-node-label">action</div><div class="flow-node-name">Generate Invoice (Xero)</div></div>
+        </div>
+        <div class="flow-connector"><div class="flow-line"></div></div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background:rgba(6,182,212,0.15)">📨</div>
+          <div><div class="flow-node-label">action</div><div class="flow-node-name">Slack Notification Sent</div></div>
+        </div>
+        <div class="flow-connector"><div class="flow-line"></div></div>
+        <div class="flow-node" style="border-color:rgba(34,197,94,0.4)">
+          <div class="flow-node-icon" style="background:rgba(34,197,94,0.15)">✅</div>
+          <div><div class="flow-node-label">complete</div><div class="flow-node-name">Confirmation Email Sent</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 3: AI Chatbots -->
+<div class="service-block reveal" id="chatbots">
+  <div>
+    <div class="service-block-label purple">Service 03 · Featured</div>
+    <h2>AI Chatbots<br/><span class="purple">for your business.</span></h2>
+    <p class="lead">Deploy a custom AI chatbot trained on your products, services, and FAQs — available 24/7 to engage visitors, qualify leads, and book calls. Works on any website, new or existing.</p>
+    <p class="works-with"><span>✓ Works with</span> — any existing website, no rebuild required</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon purple">✦</div>
+        <div><strong>Trained on Your Business</strong><p>We train the chatbot on your services, FAQs, pricing, and tone — so it answers like a knowledgeable member of your team.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon purple">✦</div>
+        <div><strong>Lead Capture &amp; Routing</strong><p>Captures visitor details and pushes them directly into your CRM or triggers an automation workflow automatically.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon purple">✦</div>
+        <div><strong>Human Handoff</strong><p>When a conversation needs a real person, the chatbot hands off cleanly — with full context passed along.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon purple">✦</div>
+        <div><strong>Embeds in Minutes</strong><p>A single line of code adds the chatbot to any existing site — no rebuild, no developer bottleneck.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link" style="color:var(--node-purple)">Get an AI Chatbot →</a>
+  </div>
+  <div class="visual-card purple-tint">
+    <div class="visual-card-inner">
+      <div class="chat-demo">
+        <div class="chat-demo-bar">
+          <div class="chat-demo-dot"></div>
+          <div class="chat-demo-title">Your Business Assistant</div>
+          <div class="chat-demo-sub">Online · Powered by AI</div>
+        </div>
+        <div class="chat-msg bot">Hi there! 👋 I'm here to help. What can I do for you today?</div>
+        <div class="chat-msg user">Do you need to rebuild my website to add a chatbot?</div>
+        <div class="chat-msg bot">Not at all — we can add an AI chatbot to any existing website with a single line of code. No rebuild needed. Want to book a free call to discuss?</div>
+        <div class="chat-msg user">Yes, that'd be great!</div>
+        <div class="chat-typing"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 4: Agentic AI -->
+<div class="service-block reverse reveal" id="ai">
+  <div>
+    <div class="service-block-label">Service 04</div>
+    <h2>Agentic<br/><span>AI Systems</span></h2>
+    <p class="lead">Beyond chatbots — we build AI agents that are embedded into your workflows, making decisions, processing documents, qualifying leads, and routing work automatically at scale.</p>
+    <p class="works-with"><span>✓ Works with</span> — any existing website or system, no rebuild needed</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Lead Qualification</strong><p>AI reads inbound enquiries and scores or routes them based on intent, urgency, and fit — automatically.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Document Processing</strong><p>Extract, classify, and act on data from invoices, contracts, and forms without manual review.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Intelligent Routing</strong><p>Agents decide which path a workflow takes — which team, which template, which action — in milliseconds.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link">Book a free consultation →</a>
+  </div>
+  <div class="visual-card">
+    <div class="visual-card-inner">
+      <div class="ai-visual">
+        <div class="ai-input">
+          <span>// inbound enquiry — form trigger</span><br/>
+          "Hi, we're a 50-person logistics firm looking<br/>
+          to automate our invoicing and onboarding.<br/>
+          Budget confirmed. Ready to start ASAP."
+        </div>
+        <div class="ai-process">
+          <div class="ai-pulse"></div>
+          <div class="ai-process-text">AI agent processing · analysing intent &amp; urgency...</div>
+        </div>
+        <div class="ai-outputs">
+          <div class="ai-output-chip"><div class="ai-output-dot" style="background:var(--node-green)"></div>Score: High Intent</div>
+          <div class="ai-output-chip"><div class="ai-output-dot" style="background:var(--accent)"></div>Priority: Urgent</div>
+          <div class="ai-output-chip"><div class="ai-output-dot" style="background:var(--node-blue)"></div>Route: Sales Lead</div>
+          <div class="ai-output-chip"><div class="ai-output-dot" style="background:var(--node-purple)"></div>Action: Book Call</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 5: Systems Integration -->
+<div class="service-block reveal" id="integration">
+  <div>
+    <div class="service-block-label">Service 05</div>
+    <h2>Systems<br/><span>Integration</span></h2>
+    <p class="lead">Connect your existing tools — CRMs, finance platforms, comms, and data systems — into a single coherent data flow. Whether you have a new site or an existing one, we build the bridges.</p>
+    <p class="works-with"><span>✓ Works with</span> — any existing website or toolstack, including Jotform &amp; Google Forms as entry points</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>CRM &amp; Finance</strong><p>Salesforce, HubSpot, Xero, QuickBooks, Sage — connected and in sync automatically.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Custom API Connections</strong><p>If it has an API, we can connect it. Custom integrations for niche tools and internal systems too.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>One Source of Truth</strong><p>Data entered once flows to every system it needs to — no duplication, no manual syncing.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link">Book a free consultation →</a>
+  </div>
+  <div class="visual-card">
+    <div class="visual-card-inner">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(234,88,12,0.1);border:1px solid rgba(234,88,12,0.2);border-radius:8px;padding:10px 16px">
+          <span style="font-size:16px">📋</span>
+          <span style="font-size:0.8rem;font-weight:700">Your Forms / Website</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--muted);margin-top:6px">central trigger — Jotform, Google Forms, or any site</div>
+      </div>
+      <div class="int-grid">
+        <div class="int-chip"><div class="int-chip-icon">🏢</div><div class="int-chip-name">Salesforce</div></div>
+        <div class="int-chip"><div class="int-chip-icon">💚</div><div class="int-chip-name">Xero</div></div>
+        <div class="int-chip"><div class="int-chip-icon">💬</div><div class="int-chip-name">Slack</div></div>
+        <div class="int-chip"><div class="int-chip-icon">📊</div><div class="int-chip-name">HubSpot</div></div>
+        <div class="int-chip"><div class="int-chip-icon">🤖</div><div class="int-chip-name">Claude AI</div></div>
+        <div class="int-chip"><div class="int-chip-icon">🗄️</div><div class="int-chip-name">PostgreSQL</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- SERVICE 6: Monitoring -->
+<div class="service-block reverse reveal" id="monitoring">
+  <div>
+    <div class="service-block-label">Service 06</div>
+    <h2>Monitoring<br/><span>&amp; Maintenance</span></h2>
+    <p class="lead">We don't just build and disappear. We monitor your website and workflows proactively — catching issues before they affect your business and keeping everything reliable as you scale.</p>
+    <p class="works-with"><span>✓ Works with</span> — any setup we've built or integrated with</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Uptime Monitoring</strong><p>Your website and automation endpoints are monitored around the clock with instant alerting.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Error Alerting</strong><p>Workflow failures trigger immediate alerts so we can diagnose and fix issues fast — often before you notice.</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">✦</div>
+        <div><strong>Ongoing Optimisation</strong><p>As your tools and processes evolve, we update your workflows to match — keeping everything in sync.</p></div>
+      </div>
+    </div>
+    <a href="innov8-workflows.html#contact" class="service-link">Book a free consultation →</a>
+  </div>
+  <div class="visual-card">
+    <div class="visual-card-inner">
+      <div class="monitor-visual">
+        <div class="monitor-stat-row">
+          <div class="monitor-stat">
+            <div class="monitor-stat-val" style="color:var(--node-green)">99.9<span style="font-size:1rem">%</span></div>
+            <div class="monitor-stat-label">UPTIME SLA</div>
+          </div>
+          <div class="monitor-stat">
+            <div class="monitor-stat-val" style="color:var(--accent)">&lt;2<span style="font-size:1rem">min</span></div>
+            <div class="monitor-stat-label">AVG ALERT TIME</div>
+          </div>
+        </div>
+        <div class="monitor-log">
+          <div class="log-line"><div class="log-dot" style="background:var(--node-green)"></div><span style="color:var(--muted)">09:14:02</span>&nbsp; Jotform trigger received</div>
+          <div class="log-line"><div class="log-dot" style="background:var(--node-green)"></div><span style="color:var(--muted)">09:14:03</span>&nbsp; CRM contact created</div>
+          <div class="log-line"><div class="log-dot" style="background:var(--node-green)"></div><span style="color:var(--muted)">09:14:04</span>&nbsp; Invoice generated · Xero</div>
+          <div class="log-line"><div class="log-dot" style="background:var(--node-yellow)"></div><span style="color:var(--muted)">09:15:11</span>&nbsp; Retry triggered · attempt 2/3</div>
+          <div class="log-line"><div class="log-dot" style="background:var(--node-green)"></div><span style="color:var(--muted)">09:15:12</span>&nbsp; Resolved · confirmation sent</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- CTA -->
+<div class="cta-band">
+  <div class="cta-band-inner reveal">
+    <div>
+      <h2>Ready to get<br/><span>started?</span></h2>
+      <p>New site or existing — every engagement starts with a free consultation. Tell us what you need and we'll confirm all costs before anything begins.</p>
+    </div>
+    <div class="cta-band-actions">
+      <a href="innov8-workflows.html#contact" class="btn-primary">Book Free Consultation</a>
+      <a href="innov8-workflows.html" class="btn-ghost">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="innov8-workflows.html" class="footer-logo">
+    <div class="logo-box" style="width:26px;height:26px;font-size:11px">i8</div>
+    Innov8 Workflows
+  </a>
+  <div class="footer-right">© 2025 Innov8 Workflows · Built to automate.</div>
+</footer>
+
+<script>
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, lines = [];
+  const SP = 38;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    lines = [];
+    for (let i = 0; i < 8; i++) lines.push(newLine());
+  }
+  function newLine() {
+    return { col: Math.floor(Math.random()*Math.ceil(W/SP)), row: Math.floor(Math.random()*Math.ceil(H/SP)), len: Math.floor(Math.random()*5)+3, dir: Math.random()>0.5?'h':'v', progress: Math.random(), speed: 0.003+Math.random()*0.004, color: Math.random()>0.5?'#ea580c':'#3b82f6' };
+  }
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    const cols=Math.ceil(W/SP)+1, rows=Math.ceil(H/SP)+1;
+    ctx.fillStyle='#2a2a2a';
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) { ctx.beginPath(); ctx.arc(c*SP,r*SP,1,0,Math.PI*2); ctx.fill(); }
+    for (let l of lines) {
+      l.progress+=l.speed;
+      if (l.progress>1) { Object.assign(l,newLine()); l.progress=0; }
+      const sx=l.col*SP,sy=l.row*SP,ex=l.dir==='h'?sx+l.len*SP:sx,ey=l.dir==='v'?sy+l.len*SP:sy;
+      const gx=sx+(ex-sx)*l.progress,gy=sy+(ey-sy)*l.progress;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(gx,gy); ctx.strokeStyle=l.color; ctx.lineWidth=1.5; ctx.globalAlpha=0.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(gx,gy,3,0,Math.PI*2); ctx.fillStyle=l.color; ctx.globalAlpha=0.9; ctx.fill(); ctx.globalAlpha=1;
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { setTimeout(()=>e.target.classList.add('visible'),60); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+
+
+<script src="cookie-consent.js"></script>
+</body>
+</html>
