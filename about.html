@@ -141,6 +141,27 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
   .cta-band-inner { flex-direction: column; }
   footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
 }
+
+/* ── ANIMATED SHADER HERO ── */
+.shader-hero { position: relative; z-index: 1; width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#shaderCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: #000; }
+.shader-hero-overlay { position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.5) 100%); pointer-events: none; }
+.shader-hero-content { position: relative; z-index: 2; text-align: center; max-width: 900px; padding: 0 24px; pointer-events: none; }
+.shader-hero-content .page-hero-badge { margin: 0 auto 28px; pointer-events: auto; }
+.shader-hero-content h1 { font-size: clamp(2.8rem, 7vw, 5.5rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 20px; }
+.shader-hero-content h1 .line1 { display: block; background: linear-gradient(to right, #fdba74, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.shader-hero-content h1 .line2 { display: block; background: linear-gradient(to right, #fbbf24, #ea580c, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.shader-hero-content p { font-size: clamp(1rem, 2vw, 1.25rem); color: rgba(255,200,150,0.85); max-width: 640px; margin: 0 auto 36px; line-height: 1.65; font-weight: 300; }
+.shader-hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; pointer-events: auto; }
+.shader-hero-actions .btn-primary { font-size: 1rem; padding: 14px 32px; border-radius: 100px; background: linear-gradient(135deg, #ea580c, #f59e0b); color: #000; font-weight: 700; border: none; transition: transform 0.2s, box-shadow 0.2s; }
+.shader-hero-actions .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(234,88,12,0.35); }
+.shader-hero-actions .btn-ghost { font-size: 1rem; padding: 14px 28px; border-radius: 100px; background: rgba(234,88,12,0.1); border: 1px solid rgba(234,88,12,0.3); color: rgba(255,200,150,0.9); backdrop-filter: blur(8px); transition: all 0.2s; }
+.shader-hero-actions .btn-ghost:hover { border-color: rgba(234,88,12,0.6); transform: translateY(-2px); }
+.shader-hero .hero-word { display: inline-block; opacity: 0; animation: fadeUp 0.7s ease forwards; }
+/* Founder card below hero */
+.shader-hero-founder { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: rgba(15,15,15,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; font-size: 0.82rem; color: var(--muted2); pointer-events: none; opacity: 0; animation: fadeUp 0.6s 2s ease forwards; }
+.shader-hero-founder .founder-dot { width: 32px; height: 32px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -160,24 +181,39 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
   </ul>
 </nav>
 
+<!-- Animated Shader Hero -->
+<div class="shader-hero">
+  <canvas id="shaderCanvas"></canvas>
+  <div class="shader-hero-overlay"></div>
+
+  <div class="shader-hero-content">
+    <div class="page-hero-badge hero-word" style="animation-delay:0.2s">About Us</div>
+    <h1>
+      <span class="line1 hero-word" style="animation-delay:0.4s">We Automate The</span>
+      <span class="line2 hero-word" style="animation-delay:0.7s">Work You Shouldn't Do.</span>
+    </h1>
+    <p class="hero-word" style="animation-delay:1.0s">Built on a simple belief — most businesses spend far too much time on repetitive manual tasks that technology could handle. We exist to change that.</p>
+    <div class="shader-hero-actions hero-word" style="animation-delay:1.3s">
+      <a href="consultancy.html" class="btn-primary">Work With Us</a>
+      <a href="case-studies.html" class="btn-ghost">See Our Work →</a>
+    </div>
+  </div>
+
+  <div class="shader-hero-founder">
+    <div class="founder-dot">👋</div>
+    <span>Founded by <strong style="color:var(--text)">James Barlow</strong> · UK-based</span>
+  </div>
+</div>
+
 <div class="breadcrumb">
   <a href="index.html">Home</a>
   <span>/</span>
   <span style="color:var(--text)">About</span>
 </div>
 
-<!-- HERO -->
-<div class="page-hero">
-  <div>
-    <div class="page-hero-badge">About Us</div>
-    <h1>We automate the<br/>work you<br/><span>shouldn't be doing.</span></h1>
-    <p>Innov8 Workflows was built on a simple belief — that most businesses are spending far too much time on repetitive manual tasks that technology could handle for them. We exist to change that.</p>
-    <div class="hero-actions">
-      <a href="consultancy.html" class="btn-primary">Work With Us</a>
-      <a href="case-studies.html" class="btn-ghost">See Our Work →</a>
-    </div>
-  </div>
-  <div class="founder-card">
+<!-- Founder Detail Card (moved below hero) -->
+<div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:48px 48px 0;">
+  <div class="founder-card reveal">
     <div class="founder-inner">
       <div class="founder-avatar">👋</div>
       <div class="founder-name">James Barlow</div>
@@ -396,6 +432,123 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
     entries.forEach(e => { if (e.isIntersecting) { setTimeout(()=>e.target.classList.add('visible'),60); obs.unobserve(e.target); } });
   }, { threshold: 0.1 });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// ── ANIMATED SHADER HERO (WebGL2) ────────────────────────────
+(function() {
+  var c = document.getElementById('shaderCanvas');
+  if (!c) return;
+  var gl = c.getContext('webgl2');
+  if (!gl) { console.warn('WebGL2 not supported'); return; }
+
+  var vertSrc = '#version 300 es\nprecision highp float;\nin vec4 position;\nvoid main(){gl_Position=position;}';
+
+  var fragSrc = [
+    '#version 300 es',
+    'precision highp float;',
+    'out vec4 O;',
+    'uniform vec2 resolution;',
+    'uniform float time;',
+    'uniform vec2 touch;',
+    '#define FC gl_FragCoord.xy',
+    '#define T time',
+    '#define R resolution',
+    '#define MN min(R.x,R.y)',
+    'float rnd(vec2 p){p=fract(p*vec2(12.9898,78.233));p+=dot(p,p+34.56);return fract(p.x*p.y);}',
+    'float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);float a=rnd(i),b=rnd(i+vec2(1,0)),c=rnd(i+vec2(0,1)),d=rnd(i+1.);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}',
+    'float fbm(vec2 p){float t=.0,a=1.;mat2 m=mat2(1.,-.5,.2,1.2);for(int i=0;i<5;i++){t+=a*noise(p);p*=2.*m;a*=.5;}return t;}',
+    'float clouds(vec2 p){float d=1.,t=.0;for(float i=.0;i<3.;i++){float a=d*fbm(i*10.+p.x*.2+.2*(1.+i)*p.y+d+i*i+p);t=mix(t,d,a);d=a;p*=2./(i+1.);}return t;}',
+    'void main(void){',
+    '  vec2 uv=(FC-.5*R)/MN,st=uv*vec2(2,1);',
+    '  vec3 col=vec3(0);',
+    '  float bg=clouds(vec2(st.x+T*.5,-st.y));',
+    '  uv*=1.-.3*(sin(T*.2)*.5+.5);',
+    '  for(float i=1.;i<12.;i++){',
+    '    uv+=.1*cos(i*vec2(.1+.01*i,.8)+i*i+T*.5+.1*uv.x);',
+    '    vec2 p=uv;',
+    '    float d=length(p);',
+    '    col+=.00125/d*(cos(sin(i)*vec3(1,2,3))+1.);',
+    '    float b=noise(i+p+bg*1.731);',
+    '    col+=.002*b/length(max(p,vec2(b*p.x*.02,p.y)));',
+    '    col=mix(col,vec3(bg*.25,bg*.137,bg*.05),d);',
+    '  }',
+    '  O=vec4(col,1);',
+    '}'
+  ].join('\n');
+
+  var prog, vs, fs, buf, uRes, uTime, uTouch;
+  var mouse = [0, 0];
+
+  function compile(shader, src) {
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+      console.error(gl.getShaderInfoLog(shader));
+  }
+
+  function setup() {
+    vs = gl.createShader(gl.VERTEX_SHADER);
+    fs = gl.createShader(gl.FRAGMENT_SHADER);
+    compile(vs, vertSrc);
+    compile(fs, fragSrc);
+    prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.error(gl.getProgramInfoLog(prog)); return;
+    }
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,1,-1,-1,1,1,1,-1]), gl.STATIC_DRAW);
+    var pos = gl.getAttribLocation(prog, 'position');
+    gl.enableVertexAttribArray(pos);
+    gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+    uRes = gl.getUniformLocation(prog, 'resolution');
+    uTime = gl.getUniformLocation(prog, 'time');
+    uTouch = gl.getUniformLocation(prog, 'touch');
+  }
+
+  function resize() {
+    var hero = document.querySelector('.shader-hero');
+    var rect = hero ? hero.getBoundingClientRect() : null;
+    var dpr = Math.max(1, 0.5 * window.devicePixelRatio);
+    var w = rect ? Math.round(rect.width) : window.innerWidth;
+    var h = rect ? Math.round(rect.height) : window.innerHeight;
+    c.width = w * dpr; c.height = h * dpr;
+    c.style.width = w + 'px'; c.style.height = h + 'px';
+    gl.viewport(0, 0, c.width, c.height);
+  }
+
+  function render(now) {
+    if (!prog) return;
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog);
+    gl.uniform2f(uRes, c.width, c.height);
+    gl.uniform1f(uTime, now * 0.001);
+    gl.uniform2f(uTouch, mouse[0], mouse[1]);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+
+  var hero = document.querySelector('.shader-hero');
+  if (hero) {
+    hero.addEventListener('pointermove', function(e) {
+      var rect = hero.getBoundingClientRect();
+      var dpr = Math.max(1, 0.5 * window.devicePixelRatio);
+      mouse[0] = (e.clientX - rect.left) * dpr;
+      mouse[1] = (rect.height - (e.clientY - rect.top)) * dpr;
+    });
+  }
+
+  window.addEventListener('resize', resize);
+  function startShader() {
+    var h = document.querySelector('.shader-hero');
+    if (h && h.offsetHeight > 300) { resize(); setup(); render(0); }
+    else { setTimeout(startShader, 100); }
+  }
+  setTimeout(startShader, 50);
+})();
 </script>
 
 <script src="cookie-consent.js"></script>
