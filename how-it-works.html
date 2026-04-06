@@ -135,6 +135,24 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
   .cta-band-inner { flex-direction: column; }
   footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
 }
+
+/* ── PROGRESSIVE VIDEO HERO ── */
+.prog-hero { position: relative; z-index: 1; width: 100%; min-height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.prog-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.prog-hero-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 1; }
+.prog-hero-content { position: relative; z-index: 2; text-align: center; max-width: 720px; padding: 0 24px; }
+.prog-hero-content h1 { font-size: clamp(2.8rem, 7vw, 5rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; color: var(--accent); margin-bottom: 20px; }
+.prog-hero-content h1 .cycle-wrap { position: relative; display: block; height: 1.15em; overflow: hidden; }
+.prog-hero-content h1 .cycle-word { position: absolute; width: 100%; left: 0; color: var(--accent2); transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s; }
+.prog-hero-content h1 .cycle-word.active { transform: translateY(0); opacity: 1; }
+.prog-hero-content h1 .cycle-word.above { transform: translateY(-110%); opacity: 0; }
+.prog-hero-content h1 .cycle-word.below { transform: translateY(110%); opacity: 0; }
+.prog-hero-content p { font-size: clamp(1rem, 2vw, 1.2rem); color: rgba(240,200,160,0.8); max-width: 560px; margin: 0 auto 36px; line-height: 1.65; }
+.prog-hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.prog-hero-actions .btn-primary { padding: 14px 28px; border-radius: 100px; font-size: 0.95rem; }
+.prog-hero-actions .btn-ghost { padding: 14px 24px; border-radius: 100px; font-size: 0.95rem; background: rgba(234,88,12,0.08); border-color: rgba(234,88,12,0.3); }
+.prog-hero .hero-word { display: inline-block; opacity: 0; animation: fadeUp 0.6s ease forwards; }
+.prog-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(234,88,12,0.1); border: 1px solid rgba(234,88,12,0.3); border-radius: 100px; padding: 8px 18px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 28px; backdrop-filter: blur(8px); }
 </style>
 </head>
 <body>
@@ -155,16 +173,35 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
   </ul>
 </nav>
 
+<!-- Progressive Video Hero -->
+<div class="prog-hero">
+  <video class="prog-hero-video" autoplay loop muted playsinline>
+    <source src="https://videos.pexels.com/video-files/18526841/uhd_30fps.mp4" type="video/mp4"/>
+  </video>
+  <div class="prog-hero-dim"></div>
+
+  <div class="prog-hero-content">
+    <div class="prog-badge hero-word" style="animation-delay:0.2s">The Process</div>
+    <h1>
+      <span class="hero-word" style="animation-delay:0.4s">Your workflows.</span>
+      <span class="cycle-wrap" id="cycleWrap">
+        <span class="cycle-word active" data-idx="0">automated.</span>
+        <span class="cycle-word below" data-idx="1">intelligent.</span>
+        <span class="cycle-word below" data-idx="2">seamless.</span>
+      </span>
+    </h1>
+    <p class="hero-word" style="animation-delay:1.0s">Whether you're starting from scratch or already have a website — our process is clear, transparent, and fast. Here's exactly what working with us looks like.</p>
+    <div class="prog-hero-actions hero-word" style="animation-delay:1.3s">
+      <a href="consultancy.html#contact" class="btn-primary">Book Free Consultation →</a>
+      <a href="case-studies.html" class="btn-ghost">View Case Studies</a>
+    </div>
+  </div>
+</div>
+
 <div class="breadcrumb">
   <a href="index.html">Home</a>
   <span>/</span>
   <span style="color:var(--text)">How It Works</span>
-</div>
-
-<div class="page-hero">
-  <div class="page-hero-badge">The Process</div>
-  <h1>Simple steps.<br/><span>Powerful results.</span></h1>
-  <p>Whether you're starting from scratch or already have a website, our process is designed to be clear, transparent, and fast. Here's exactly what working with us looks like.</p>
 </div>
 
 <!-- PHASE 1 -->
@@ -491,9 +528,29 @@ footer { border-top: 1px solid var(--border); padding: 48px; display: flex; alig
     entries.forEach(e => { if (e.isIntersecting) { setTimeout(()=>e.target.classList.add('visible'),60); obs.unobserve(e.target); } });
   }, { threshold: 0.1 });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// ── CYCLING HEADLINE WORDS ───────────────────────────────────
+(function() {
+  var words = document.querySelectorAll('#cycleWrap .cycle-word');
+  if (!words.length) return;
+  var current = 0;
+  setInterval(function() {
+    words[current].className = 'cycle-word above';
+    current = (current + 1) % words.length;
+    // Reset the next word to below before activating
+    var next = (current + 1) % words.length;
+    setTimeout(function() {
+      words[next].className = 'cycle-word below';
+    }, 500);
+    words[current].className = 'cycle-word active';
+  }, 2200);
+})();
 </script>
 
 
 <script src="cookie-consent.js"></script>
+
+<!-- Logic AI Chatbot (Jotform) -->
+<script src='https://cdn.jotfor.ms/agent/embedjs/019d21ae740c7db289b331944a1348e32b39/embed.js'></script>
 </body>
 </html>
