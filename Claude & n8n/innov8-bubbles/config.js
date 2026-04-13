@@ -144,12 +144,11 @@ export const FIREBASE_CONFIG = {
 // ─── Stripe Config ───
 // Replace with your Stripe publishable key and price IDs
 export const STRIPE_CONFIG = {
-  publishableKey: 'pk_test_YOUR_STRIPE_KEY',
-  // Create these products/prices in your Stripe Dashboard
+  publishableKey: 'pk_live_51TLhmHLwaoUSAyt5dQl2gxneget7LzKvMSJelKsPNA6PcgQNF4JPcQcaarrQmF6iVEpghgU0RDXrs2y0ISTXTybm00AC6v7CiQ',
   prices: [
-    { days: 7,  label: '7 Days',  price: '$29',  priceId: 'price_7day_ID' },
-    { days: 14, label: '14 Days', price: '$49',  priceId: 'price_14day_ID' },
-    { days: 30, label: '30 Days', price: '$99',  priceId: 'price_30day_ID' },
+    { days: 7,  label: '7 Days',  price: '£29',  priceId: 'price_1TLhsOLwaoUSAyt5GdFgKhK4' },
+    { days: 14, label: '14 Days', price: '£49',  priceId: 'price_1TLht2LwaoUSAyt5B2e2KeRI' },
+    { days: 30, label: '30 Days', price: '£99',  priceId: 'price_1TLhtSLwaoUSAyt5ytLH6hiZ' },
   ],
 };
 

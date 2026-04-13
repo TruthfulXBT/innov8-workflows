@@ -55,12 +55,8 @@ export async function submitAndPay(adData, durationIndex) {
     expiresAt: expiresAt.toISOString(),
   });
 
-  // Redirect to Stripe Checkout
-  // NOTE: In production, you'd create the checkout session server-side.
-  // For MVP, we use client-side redirect with the price ID.
-  // The Stripe Checkout success URL should call markAdAsPaid(adId).
-  if (_stripe && duration.priceId && !duration.priceId.startsWith('price_')) {
-    // Real Stripe price ID configured
+  // Redirect to Stripe Checkout for payment
+  if (_stripe && duration.priceId) {
     try {
       const { error } = await _stripe.redirectToCheckout({
         lineItems: [{ price: duration.priceId, quantity: 1 }],
@@ -75,14 +71,7 @@ export async function submitAndPay(adData, durationIndex) {
       throw e;
     }
   } else {
-    // Demo mode: auto-approve the ad (no real payment)
-    console.log('[ads] Demo mode — auto-approving ad:', adId);
-    try {
-      await markAdAsPaid(adId);
-    } catch (e) {
-      // Firestore might not be set up, just log
-      console.warn('[ads] Could not mark ad as paid:', e.message);
-    }
+    throw new Error('Payment system unavailable. Please try again later.');
   }
 
   return adId;
