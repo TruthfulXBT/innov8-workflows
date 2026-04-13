@@ -50,7 +50,7 @@ export async function fetchAssets(assetClass) {
 }
 
 async function _fetchAll() {
-  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate'];
+  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate', 'property'];
   const hasFmpKey = !!localStorage.getItem(STORAGE.FMP_KEY);
 
   // Only fetch classes we have keys for
@@ -76,7 +76,8 @@ async function _fetchAll() {
       SAMPLE_DATA.indices || [],
       SAMPLE_DATA.stocks || [],
       SAMPLE_DATA.commodities || [],
-      SAMPLE_DATA.realestate || []
+      SAMPLE_DATA.realestate || [],
+      SAMPLE_DATA.property || []
     );
     anySample = true;
   }
@@ -105,6 +106,9 @@ async function _doFetch(assetClass, cacheKey) {
       case 'realestate':
         data = await _fetchRealEstate();
         break;
+      case 'property':
+        // Property data is static/sample — no live API
+        return { data: SAMPLE_DATA.property || [], isSample: true };
       default:
         throw new Error('Unknown asset class: ' + assetClass);
     }

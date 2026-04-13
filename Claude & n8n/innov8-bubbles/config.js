@@ -28,6 +28,11 @@ export const ASSET_CLASSES = {
     icon: '🏠',
     requiresKey: true,
   },
+  property: {
+    label: 'Property',
+    icon: '🏡',
+    requiresKey: false,
+  },
 };
 
 export const TIME_PERIODS = [
@@ -119,6 +124,7 @@ export const CACHE_TTL = {
   stocks: 300_000,
   commodities: 300_000,
   realestate: 300_000,
+  property: 3600_000, // 1 hour — property data doesn't change often
 };
 
 // ─── LocalStorage keys ───
@@ -369,5 +375,29 @@ export const SAMPLE_DATA = {
     { id: 'PSA', symbol: 'PSA', name: 'Public Storage', assetClass: 'realestate', price: 285.50, marketCap: 50000000000, volume24h: 850000, change1h: 0.0, change24h: 0.3, change7d: 0.8, change30d: 2.5, change1y: 8.2, image: '' },
     { id: 'AVB', symbol: 'AVB', name: 'AvalonBay Communities', assetClass: 'realestate', price: 198.70, marketCap: 28000000000, volume24h: 620000, change1h: 0.1, change24h: 0.5, change7d: 1.5, change30d: 4.2, change1y: 15.8, image: '' },
     { id: 'VICI', symbol: 'VICI', name: 'VICI Properties', assetClass: 'realestate', price: 31.20, marketCap: 32000000000, volume24h: 8500000, change1h: 0.2, change24h: 0.8, change7d: 1.8, change30d: 5.2, change1y: 12.5, image: '' },
+  ],
+  property: [
+    // UK Regions — avg house prices (ONS data Q1 2026 approx)
+    { id: 'uk-london', symbol: 'LDN', name: 'London', assetClass: 'property', price: 523000, marketCap: 523000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.4, change1y: 2.1, image: '' },
+    { id: 'uk-south-east', symbol: 'SE', name: 'South East', assetClass: 'property', price: 385000, marketCap: 385000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.5, change1y: 3.2, image: '' },
+    { id: 'uk-east', symbol: 'EAST', name: 'East of England', assetClass: 'property', price: 342000, marketCap: 342000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.4, change1y: 2.8, image: '' },
+    { id: 'uk-south-west', symbol: 'SW', name: 'South West', assetClass: 'property', price: 315000, marketCap: 315000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.6, change1y: 3.5, image: '' },
+    { id: 'uk-west-midlands', symbol: 'WM', name: 'West Midlands', assetClass: 'property', price: 248000, marketCap: 248000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.5, change1y: 4.1, image: '' },
+    { id: 'uk-east-midlands', symbol: 'EM', name: 'East Midlands', assetClass: 'property', price: 242000, marketCap: 242000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.6, change1y: 4.5, image: '' },
+    { id: 'uk-north-west', symbol: 'NW', name: 'North West', assetClass: 'property', price: 218000, marketCap: 218000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.7, change1y: 5.2, image: '' },
+    { id: 'uk-yorkshire', symbol: 'YORKS', name: 'Yorkshire & Humber', assetClass: 'property', price: 205000, marketCap: 205000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.7, change1y: 5.8, image: '' },
+    { id: 'uk-wales', symbol: 'WAL', name: 'Wales', assetClass: 'property', price: 198000, marketCap: 198000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.8, change1y: 4.8, image: '' },
+    { id: 'uk-north-east', symbol: 'NE', name: 'North East', assetClass: 'property', price: 162000, marketCap: 162000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.9, change1y: 6.2, image: '' },
+    { id: 'uk-scotland', symbol: 'SCOT', name: 'Scotland', assetClass: 'property', price: 195000, marketCap: 195000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.6, change1y: 4.2, image: '' },
+    { id: 'uk-ni', symbol: 'NI', name: 'Northern Ireland', assetClass: 'property', price: 178000, marketCap: 178000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.8, change1y: 5.5, image: '' },
+    // Global Property Markets
+    { id: 'global-us', symbol: 'US', name: 'United States', assetClass: 'property', price: 420000, marketCap: 420000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.0, change30d: 0.3, change1y: 4.8, image: '' },
+    { id: 'global-aus', symbol: 'AUS', name: 'Australia', assetClass: 'property', price: 780000, marketCap: 390000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.4, change1y: 7.2, image: '' },
+    { id: 'global-canada', symbol: 'CAN', name: 'Canada', assetClass: 'property', price: 650000, marketCap: 325000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.0, change30d: -0.2, change1y: -1.5, image: '' },
+    { id: 'global-germany', symbol: 'DEU', name: 'Germany', assetClass: 'property', price: 310000, marketCap: 310000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.0, change30d: -0.3, change1y: -3.2, image: '' },
+    { id: 'global-france', symbol: 'FRA', name: 'France', assetClass: 'property', price: 295000, marketCap: 295000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.0, change30d: -0.1, change1y: -2.1, image: '' },
+    { id: 'global-dubai', symbol: 'UAE', name: 'Dubai', assetClass: 'property', price: 450000, marketCap: 225000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.2, change30d: 1.5, change1y: 18.5, image: '' },
+    { id: 'global-singapore', symbol: 'SGP', name: 'Singapore', assetClass: 'property', price: 1250000, marketCap: 312000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.3, change1y: 5.2, image: '' },
+    { id: 'global-japan', symbol: 'JPN', name: 'Japan', assetClass: 'property', price: 380000, marketCap: 380000000000, volume24h: 0, change1h: null, change24h: null, change7d: 0.1, change30d: 0.5, change1y: 8.5, image: '' },
   ],
 };
