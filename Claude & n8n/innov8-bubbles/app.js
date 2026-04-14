@@ -2,12 +2,13 @@
    app.js — Innov8 Bubbles: Entry point, state, event wiring
    ============================================================ */
 
-import { ASSET_CLASSES, STORAGE, STRIPE_CONFIG, AD_BADGE_TYPES, CURRENCIES, COLOR_SCHEMES, formatPrice, formatLargeNumber, formatChange, getLogoUrl, setColorScheme, getColorScheme } from './config.js';
+import { ASSET_CLASSES, STORAGE, STRIPE_CONFIG, AD_BADGE_TYPES, CURRENCIES, COLOR_SCHEMES, CUSTOM_ASSET_TYPES, PENSION_PROVIDERS, SPONSORED_PRICES, formatPrice, formatLargeNumber, formatChange, getLogoUrl, setColorScheme, getColorScheme } from './config.js';
 import { BubbleEngine } from './bubble-engine.js';
-import { fetchAssets } from './data-service.js';
+import { fetchAssets, invalidateCache, getSponsoredBubbles } from './data-service.js';
 import * as Portfolio from './portfolio.js';
-import { initFirebase, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut as firebaseSignOut, onAuthChange, getCurrentUser, isSignedIn, getUserInitial, getUserDisplayName, fetchApprovedAds, syncLocalPortfoliosToCloud, loadPortfoliosFromCloud, uploadAdLogo } from './auth.js';
-import { initStripe, submitAndPay, checkPaymentReturn, generateAdPreviewHTML } from './ads.js';
+import * as CustomAssets from './custom-assets.js';
+import { initFirebase, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut as firebaseSignOut, onAuthChange, getCurrentUser, isSignedIn, getUserInitial, getUserDisplayName, fetchApprovedAds, fetchApprovedSponsored, syncLocalPortfoliosToCloud, loadPortfoliosFromCloud, uploadAdLogo, loadCustomAssetsFromCloud, syncLocalCustomAssetsToCloud } from './auth.js';
+import { initStripe, submitAndPay, submitAndPaySponsored, checkPaymentReturn, generateAdPreviewHTML, generateSponsoredItemHTML } from './ads.js';
 
 // ─── State ───
 const state = {
@@ -27,6 +28,7 @@ const state = {
   theme: 'midnight',    // 'midnight', 'dark', 'slate', 'light'
   currency: 'usd',      // 'usd', 'gbp', 'eur', 'jpy', 'aud'
   colorScheme: 'red-green', // 'red-green', 'blue-yellow', 'purple-orange'
+  propertyFilter: 'all',  // 'all', 'mine', 'regional'
 };
 
 // ─── DOM References ───
@@ -41,6 +43,7 @@ const dom = {
   emptyState: $('#empty-state'),
   apiPrompt: $('#api-prompt'),
   apiPromptBtn: $('#api-prompt-btn'),
+  refreshBarFill: $('#refresh-bar-fill'),
 
   // Header
   assetPills: $('#asset-class-pills'),
@@ -130,6 +133,48 @@ const dom = {
   signupForm: $('#signup-form'),
   authError: $('#auth-error'),
 
+  // Property sub-filter bar
+  propertyFilterBar: $('#property-filter-bar'),
+  propertyFilterPills: $('#property-filter-pills'),
+  propertyFilterCount: $('#property-filter-count'),
+
+  // Custom asset modal
+  customAssetModal: $('#custom-asset-modal'),
+  customAssetClose: $('#custom-asset-close'),
+  customAssetTitle: $('#custom-asset-modal-title'),
+  caTypePills: $('#ca-type-pills'),
+  caName: $('#ca-name'),
+  caSubtype: $('#ca-subtype'),
+  caPostcode: $('#ca-postcode'),
+  caBedrooms: $('#ca-bedrooms'),
+  caPurchasePrice: $('#ca-purchase-price'),
+  caCurrentValue: $('#ca-current-value'),
+  caPurchaseDate: $('#ca-purchase-date'),
+  caLocation: $('#ca-location'),
+  caNotes: $('#ca-notes'),
+  caPropertyFields: $('#ca-property-fields'),
+  caPensionFields: $('#ca-pension-fields'),
+  caPensionProvider: $('#ca-pension-provider'),
+  caPensionEmployee: $('#ca-pension-employee'),
+  caPensionEmployer: $('#ca-pension-employer'),
+  caPensionGrowth: $('#ca-pension-growth'),
+  caPensionRetirementAge: $('#ca-pension-retirement-age'),
+  caPensionProjection: $('#ca-pension-projection'),
+  caLocationGroup: $('#ca-location-group'),
+  caSavingsGrowthGroup: $('#ca-savings-growth-group'),
+  caSavingsGrowth: $('#ca-savings-growth'),
+  caPurchasePriceLabel: $('#ca-purchase-price-label'),
+  caCurrentValueLabel: $('#ca-current-value-label'),
+  caPurchaseDateLabel: $('#ca-purchase-date-label'),
+  caAutoValue: $('#ca-auto-value'),
+  caValuationStatus: $('#ca-valuation-status'),
+  caSaveBtn: $('#ca-save-btn'),
+  caDeleteBtn: $('#ca-delete-btn'),
+  caPortfolioBtn: $('#ca-portfolio-btn'),
+  caCancelBtn: $('#ca-cancel-btn'),
+  addCustomAssetBtn: $('#add-custom-asset-btn'),
+  mobileAddCustomAssetBtn: $('#mobile-add-custom-asset-btn'),
+
   // Ad modal
   adModal: $('#ad-modal'),
   adClose: $('#ad-close'),
@@ -195,6 +240,218 @@ async function _initTicker() {
 }
 
 
+// ─── Sponsored Launches Strip ───
+
+function _initSponsoredStrip(sponsoredBubbles) {
+  const strip = document.getElementById('sponsored-strip');
+  const content = document.getElementById('sponsored-strip-content');
+  if (!strip || !content) return;
+
+  if (!sponsoredBubbles || sponsoredBubbles.length === 0) {
+    strip.classList.add('hidden');
+    document.body.classList.remove('sponsored-strip-active');
+    return;
+  }
+
+  content.innerHTML = sponsoredBubbles.map(s => generateSponsoredItemHTML({
+    name: s.name,
+    symbol: s.symbol,
+    url: s._sponsoredUrl,
+    logoUrl: s.image,
+    badge: s._sponsoredBadge,
+    badgeText: (AD_BADGE_TYPES.find(b => b.value === s._sponsoredBadge) || AD_BADGE_TYPES[0]).badgeText,
+    change24h: s.change24h,
+    description: s._sponsoredDescription,
+  })).join('');
+
+  strip.classList.remove('hidden');
+  document.body.classList.add('sponsored-strip-active');
+}
+
+
+// ─── Sponsored Modal ───
+
+let _spState = { step: 1, durationIndex: 0, logoFile: null, logoUrl: null };
+
+function _wireSponsoredModal() {
+  const modal = $('#sponsored-modal');
+  if (!modal) return;
+
+  // Open from user menu
+  const promoteBtn = $('#user-promote-launch');
+  if (promoteBtn) {
+    promoteBtn.addEventListener('click', () => {
+      if (!isSignedIn()) {
+        _openModal($('#auth-modal'));
+        _toast('Please sign in to promote a launch', 'error');
+        return;
+      }
+      _openSponsoredModal();
+    });
+  }
+
+  // Close
+  $('#sponsored-close').addEventListener('click', () => _closeModal(modal));
+
+  // Step navigation
+  $('#sp-next-1').addEventListener('click', () => {
+    const name = $('#sp-name').value.trim();
+    const symbol = $('#sp-symbol').value.trim();
+    if (!name || !symbol) {
+      _toast('Please enter a name and ticker symbol', 'error');
+      return;
+    }
+    _spGoToStep(2);
+  });
+  $('#sp-back-2').addEventListener('click', () => _spGoToStep(1));
+  $('#sp-next-2').addEventListener('click', () => _spGoToStep(3));
+  $('#sp-back-3').addEventListener('click', () => _spGoToStep(2));
+
+  // Logo upload
+  const logoUpload = $('#sp-logo-upload');
+  const logoInput = $('#sp-logo-input');
+  const logoPreview = $('#sp-logo-preview');
+  if (logoUpload && logoInput) {
+    logoUpload.addEventListener('click', () => logoInput.click());
+    logoInput.addEventListener('change', () => {
+      const file = logoInput.files[0];
+      if (!file) return;
+      if (file.size > 200 * 1024) { _toast('Logo must be under 200KB', 'error'); return; }
+      _spState.logoFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        _spState.logoUrl = e.target.result;
+        logoPreview.innerHTML = `<img src="${e.target.result}" style="height:100%;max-width:100%;object-fit:contain;border-radius:6px">`;
+        logoPreview.classList.add('has-image');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Duration selection
+  const durationGrid = $('#sp-duration-grid');
+  durationGrid.innerHTML = SPONSORED_PRICES.map((p, i) =>
+    `<div class="sp-duration-card ${i === 0 ? 'selected' : ''}" data-sp-dur="${i}">
+      <span class="sp-duration-days">${p.label}</span>
+      <span class="sp-duration-price">${p.price}</span>
+    </div>`
+  ).join('');
+
+  durationGrid.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-sp-dur]');
+    if (!card) return;
+    durationGrid.querySelectorAll('.sp-duration-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    _spState.durationIndex = parseInt(card.dataset.spDur);
+  });
+
+  // Pay button
+  $('#sp-pay-btn').addEventListener('click', async () => {
+    try {
+      const btn = $('#sp-pay-btn');
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+
+      let logoUrl = _spState.logoUrl || null;
+      if (_spState.logoFile) {
+        logoUrl = await uploadAdLogo(_spState.logoFile);
+      }
+
+      const data = _getSponsoredFormData();
+      data.logoUrl = logoUrl;
+
+      await submitAndPaySponsored(data, _spState.durationIndex);
+      _closeModal(modal);
+      _toast('Launch promoted! It will appear shortly.', 'success');
+      _fetchAndRender(false);
+    } catch (e) {
+      _toast(e.message || 'Failed to submit', 'error');
+      const btn = $('#sp-pay-btn');
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pay &amp; Launch';
+    }
+  });
+}
+
+function _openSponsoredModal() {
+  _spState = { step: 1, durationIndex: 0, logoFile: null, logoUrl: null };
+  // Reset form
+  const fields = ['sp-name', 'sp-symbol', 'sp-description', 'sp-url', 'sp-price', 'sp-change'];
+  fields.forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+  const logoPreview = $('#sp-logo-preview');
+  if (logoPreview) {
+    logoPreview.classList.remove('has-image');
+    logoPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>Click to upload</span>';
+  }
+  _spGoToStep(1);
+  _openModal($('#sponsored-modal'));
+}
+
+function _spGoToStep(step) {
+  _spState.step = step;
+
+  // Update step indicators
+  $('#sponsored-modal').querySelectorAll('[data-sp-step]').forEach(el => {
+    const s = parseInt(el.dataset.spStep);
+    el.classList.toggle('active', s === step);
+    el.classList.toggle('done', s < step);
+  });
+
+  // Show/hide step content
+  for (let i = 1; i <= 3; i++) {
+    const el = $('#sp-step-' + i);
+    if (el) el.classList.toggle('hidden', i !== step);
+  }
+
+  // Step 3: render preview
+  if (step === 3) {
+    const data = _getSponsoredFormData();
+    const duration = SPONSORED_PRICES[_spState.durationIndex];
+
+    // Strip preview
+    const stripPreview = $('#sp-preview-strip');
+    if (stripPreview) {
+      stripPreview.innerHTML = generateSponsoredItemHTML({
+        ...data,
+        badgeText: (AD_BADGE_TYPES.find(b => b.value === data.badge) || AD_BADGE_TYPES[0]).badgeText,
+        logoUrl: _spState.logoUrl,
+      });
+    }
+
+    // Bubble preview (simple visual mockup)
+    const bubblePreview = $('#sp-preview-bubble');
+    if (bubblePreview) {
+      const sym = data.symbol || '?';
+      const chg = data.change24h ? (data.change24h >= 0 ? '+' : '') + Number(data.change24h).toFixed(1) + '%' : '';
+      bubblePreview.innerHTML = `
+        <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,rgba(34,197,94,0.8),rgba(22,163,74,0.6));display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(212,160,23,0.5),0 0 40px rgba(212,160,23,0.2);border:2px solid rgba(212,160,23,0.6);animation:sp-glow-pulse 1.5s ease-in-out infinite">
+          <span style="font:800 16px 'DM Mono',monospace;color:#fff">${sym}</span>
+          <span style="font:600 11px 'DM Mono',monospace;color:#fff">${chg}</span>
+          <span style="font:700 6px 'DM Mono',monospace;color:#d4a017;margin-top:2px">SPONSORED</span>
+        </div>`;
+    }
+
+    // Summary
+    const summary = $('#sp-summary');
+    if (summary && duration) {
+      summary.innerHTML = `<strong>${duration.label}</strong> — <strong style="color:#d4a017">${duration.price}</strong> — Featured bubble + New Launches strip`;
+    }
+  }
+}
+
+function _getSponsoredFormData() {
+  return {
+    name: ($('#sp-name').value || '').trim(),
+    symbol: ($('#sp-symbol').value || '').trim().toUpperCase(),
+    description: ($('#sp-description').value || '').trim(),
+    url: ($('#sp-url').value || '').trim() || '#',
+    badge: $('#sp-badge-select').value,
+    price: parseFloat($('#sp-price').value) || 0,
+    change24h: parseFloat($('#sp-change').value) || 0,
+  };
+}
+
+
 // ─── Initialize ───
 
 function _init() {
@@ -226,6 +483,9 @@ function _init() {
     _wireAuthModal();
     _wireUserMenu();
     _wireAdModal();
+    _wireSponsoredModal();
+    _wirePropertyFilter();
+    _wireCustomAssetModal();
     _wireViewToggle();
     _wireShareButton();
     _wireKeyboardShortcuts();
@@ -269,8 +529,17 @@ async function _fetchAndRender(showLoader = true) {
 
   try {
     const { data, isSample } = await fetchAssets(assetClass);
-    state.allAssets = data;
+
+    // Merge sponsored bubbles into every view
+    const sponsored = await getSponsoredBubbles();
+    const sponsoredIds = new Set(sponsored.map(s => s.id));
+    const merged = [...data.filter(a => !sponsoredIds.has(a.id)), ...sponsored];
+
+    state.allAssets = merged;
     state.isSample = isSample;
+
+    // Update sponsored strip
+    _initSponsoredStrip(sponsored);
 
     // Ensure canvas is sized correctly
     engine.resize();
@@ -295,12 +564,39 @@ async function _fetchAndRender(showLoader = true) {
 function _applyFilters() {
   let assets = [...state.allAssets];
 
+  // When a portfolio is active, inject custom assets that belong to it
+  // so they show alongside crypto/stocks/etc regardless of active tab
+  if (state.activePortfolioId && state.assetClass !== 'assets' && state.assetClass !== 'finance') {
+    const portfolio = Portfolio.getActivePortfolio();
+    if (portfolio) {
+      const idSet = new Set(portfolio.assetIds);
+      const customInPortfolio = CustomAssets.getCustomAssetsNormalized()
+        .filter(a => idSet.has(a.id));
+      if (customInPortfolio.length > 0) {
+        // Dedupe — don't add if already present (e.g. on 'all' tab)
+        const existingIds = new Set(assets.map(a => a.id));
+        for (const ca of customInPortfolio) {
+          if (!existingIds.has(ca.id)) assets.push(ca);
+        }
+      }
+    }
+  }
+
   // Portfolio filter
   if (state.activePortfolioId) {
     const portfolio = Portfolio.getActivePortfolio();
     if (portfolio) {
       const idSet = new Set(portfolio.assetIds);
       assets = assets.filter(a => idSet.has(a.id));
+    }
+  }
+
+  // Property sub-filter
+  if ((state.assetClass === 'assets' || state.assetClass === 'finance') && state.propertyFilter !== 'all') {
+    if (state.propertyFilter === 'mine') {
+      assets = assets.filter(a => a._isCustom);
+    } else if (state.propertyFilter === 'regional') {
+      assets = assets.filter(a => !a._isCustom);
     }
   }
 
@@ -315,6 +611,9 @@ function _applyFilters() {
 
   state.filteredAssets = assets;
 
+  // Update filter count
+  _updatePropertyFilterCount();
+
   // Render the active view
   if (state.viewMode === 'table') {
     _renderTable();
@@ -322,8 +621,23 @@ function _applyFilters() {
     engine.setBubbles(assets, state.period);
   }
 
-  // Show/hide empty state
-  if (assets.length === 0 && state.allAssets.length > 0) {
+  // Show/hide empty state with contextual messaging
+  const emptyTitle = $('#empty-title');
+  const emptySub = $('#empty-subtitle');
+  if (assets.length === 0) {
+    if (state.assetClass === 'finance') {
+      emptyTitle.textContent = '🏦 No financial assets yet';
+      emptySub.innerHTML = 'Track your pensions, savings & ISAs<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="document.getElementById(\'add-custom-asset-btn\').click()">+ Add Pension or Savings</button>';
+    } else if (state.assetClass === 'assets' && state.allAssets.length === 0) {
+      emptyTitle.textContent = '🏠 No personal assets yet';
+      emptySub.innerHTML = 'Add properties, vehicles, watches & more<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="document.getElementById(\'add-custom-asset-btn\').click()">+ Add Asset</button>';
+    } else if (state.searchQuery) {
+      emptyTitle.textContent = 'No assets found';
+      emptySub.textContent = 'Try a different search term';
+    } else {
+      emptyTitle.textContent = 'No assets found';
+      emptySub.textContent = 'Try a different asset class';
+    }
     dom.emptyState.classList.remove('hidden');
   } else {
     dom.emptyState.classList.add('hidden');
@@ -342,6 +656,7 @@ function _wireAssetPills() {
     // Update all pill groups
     _syncPills('class', btn.dataset.class);
     _closeDetail();
+    _updatePropertyFilterVisibility();
     _fetchAndRender();
   };
 
@@ -513,6 +828,18 @@ function _wireDetailPanel() {
 }
 
 function _showDetail(asset) {
+  // Sponsored bubbles open the project URL
+  if (asset._isSponsored && asset._sponsoredUrl) {
+    window.open(asset._sponsoredUrl, '_blank', 'noopener');
+    return;
+  }
+
+  // Custom assets open the edit modal instead of the detail panel
+  if (asset._isCustom) {
+    _openCustomAssetForEdit(asset._customAssetId);
+    return;
+  }
+
   state.selectedAsset = asset;
   const p = dom.detailPanel;
 
@@ -773,12 +1100,41 @@ function _wireResize() {
 
 // ─── Auto Refresh ───
 
+let _refreshBarTimer = null;
+let _refreshBarStart = 0;
+
 function _startAutoRefresh() {
   if (state.refreshTimer) clearInterval(state.refreshTimer);
+  if (_refreshBarTimer) cancelAnimationFrame(_refreshBarTimer);
+
   if (state.refreshInterval > 0) {
+    const intervalMs = state.refreshInterval * 1000;
+    _refreshBarStart = Date.now();
+
+    // Data refresh
     state.refreshTimer = setInterval(() => {
       _fetchAndRender(false);
-    }, state.refreshInterval * 1000);
+      _refreshBarStart = Date.now(); // reset bar
+    }, intervalMs);
+
+    // Animate the progress bar with requestAnimationFrame
+    function _tickBar() {
+      const elapsed = Date.now() - _refreshBarStart;
+      const pct = Math.min((elapsed / intervalMs) * 100, 100);
+      dom.refreshBarFill.style.transition = 'none';
+      dom.refreshBarFill.style.width = pct + '%';
+      if (pct >= 100) {
+        // Reset for next cycle
+        dom.refreshBarFill.style.width = '0%';
+        _refreshBarStart = Date.now();
+      }
+      _refreshBarTimer = requestAnimationFrame(_tickBar);
+    }
+    dom.refreshBarFill.style.width = '0%';
+    _refreshBarTimer = requestAnimationFrame(_tickBar);
+  } else {
+    // Refresh off — hide bar
+    dom.refreshBarFill.style.width = '0%';
   }
 }
 
@@ -870,6 +1226,363 @@ function _saveSettings() {
 }
 
 
+// ─── Property Sub-Filter ───
+
+function _wirePropertyFilter() {
+  dom.propertyFilterPills.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill');
+    if (!btn || !btn.dataset.pf) return;
+    state.propertyFilter = btn.dataset.pf;
+    dom.propertyFilterPills.querySelectorAll('.pill').forEach(p =>
+      p.classList.toggle('active', p.dataset.pf === state.propertyFilter)
+    );
+    _applyFilters();
+  });
+}
+
+function _updatePropertyFilterVisibility() {
+  const show = state.assetClass === 'assets' || state.assetClass === 'finance';
+  dom.propertyFilterBar.classList.toggle('hidden', !show);
+  document.body.classList.toggle('property-filter-active', show);
+
+  // Reset to 'all' when leaving property tab
+  if (!show && state.propertyFilter !== 'all') {
+    state.propertyFilter = 'all';
+    dom.propertyFilterPills.querySelectorAll('.pill').forEach(p =>
+      p.classList.toggle('active', p.dataset.pf === 'all')
+    );
+  }
+}
+
+function _updatePropertyFilterCount() {
+  if (state.assetClass !== 'assets' && state.assetClass !== 'finance') return;
+  const total = state.allAssets.length;
+  const custom = state.allAssets.filter(a => a._isCustom).length;
+  const regional = total - custom;
+  const shown = state.filteredAssets.length;
+
+  let label = '';
+  if (state.assetClass === 'finance') {
+    // Finance tab has no regional data
+    label = `${shown} financial asset${shown !== 1 ? 's' : ''}`;
+  } else if (state.propertyFilter === 'all') {
+    label = `${shown} assets (${custom} mine, ${regional} regional)`;
+  } else if (state.propertyFilter === 'mine') {
+    label = `${shown} of ${custom} custom assets`;
+  } else {
+    label = `${shown} of ${regional} regional averages`;
+  }
+  dom.propertyFilterCount.textContent = label;
+}
+
+
+// ─── Custom Asset Modal ───
+
+let _editingCustomAssetId = null;
+let _selectedCaType = 'property';
+
+function _wireCustomAssetModal() {
+  // Open modal from "+" buttons
+  const openAdd = () => {
+    _selectedCaType = state.assetClass === 'finance' ? 'pension' : 'property';
+    _openCustomAssetForAdd();
+  };
+  if (dom.addCustomAssetBtn) dom.addCustomAssetBtn.addEventListener('click', openAdd);
+  if (dom.mobileAddCustomAssetBtn) dom.mobileAddCustomAssetBtn.addEventListener('click', openAdd);
+
+  // Close modal
+  dom.customAssetClose.addEventListener('click', () => _closeModal(dom.customAssetModal));
+  dom.caCancelBtn.addEventListener('click', () => _closeModal(dom.customAssetModal));
+
+  // Type pill selection
+  dom.caTypePills.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill');
+    if (!btn || !btn.dataset.caType) return;
+    dom.caTypePills.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    _selectedCaType = btn.dataset.caType;
+    _updateCaTypeFields();
+  });
+
+  // Pension projection — recalculate on any pension input change
+  [dom.caPensionEmployee, dom.caPensionEmployer, dom.caPensionGrowth, dom.caPensionRetirementAge, dom.caCurrentValue, dom.caPurchaseDate].forEach(el => {
+    el.addEventListener('input', () => {
+      if (_selectedCaType === 'pension') _calcPensionProjection();
+    });
+  });
+
+  // Auto-estimate button
+  dom.caAutoValue.addEventListener('click', async () => {
+    const postcode = dom.caPostcode.value.trim();
+    if (!postcode) {
+      dom.caValuationStatus.textContent = 'Please enter a postcode first';
+      dom.caValuationStatus.className = 'form-help error';
+      return;
+    }
+    dom.caValuationStatus.textContent = 'Fetching Land Registry data...';
+    dom.caValuationStatus.className = 'form-help';
+    dom.caAutoValue.disabled = true;
+
+    try {
+      const result = await CustomAssets.fetchLandRegistryValuation(postcode);
+      if (result) {
+        dom.caCurrentValue.value = result.estimatedValue;
+        dom.caValuationStatus.textContent = `Estimated from ${result.transactionCount} recent transactions`;
+        dom.caValuationStatus.className = 'form-help success';
+      } else {
+        dom.caValuationStatus.textContent = 'No data found for this postcode — enter value manually';
+        dom.caValuationStatus.className = 'form-help error';
+      }
+    } catch (e) {
+      dom.caValuationStatus.textContent = 'Auto-valuation unavailable — enter value manually';
+      dom.caValuationStatus.className = 'form-help error';
+    }
+    dom.caAutoValue.disabled = false;
+  });
+
+  // Save button
+  dom.caSaveBtn.addEventListener('click', () => {
+    const name = dom.caName.value.trim();
+    const currentValue = parseFloat(dom.caCurrentValue.value);
+
+    if (!name) {
+      _toast('Please enter an asset name', 'error');
+      return;
+    }
+    if (!currentValue || currentValue <= 0) {
+      _toast('Please enter a current value', 'error');
+      return;
+    }
+
+    const asset = {
+      id: _editingCustomAssetId || undefined,
+      name,
+      type: _selectedCaType,
+      subtype: dom.caSubtype.value,
+      location: _selectedCaType === 'pension' ? '' : dom.caLocation.value.trim(),
+      postcode: dom.caPostcode.value.trim(),
+      bedrooms: dom.caBedrooms.value ? parseInt(dom.caBedrooms.value) : null,
+      purchasePrice: parseFloat(dom.caPurchasePrice.value) || 0,
+      purchaseDate: dom.caPurchaseDate.value || '',
+      currentValue,
+      autoValuation: false,
+      notes: dom.caNotes.value.trim(),
+      // Pension-specific fields
+      pensionProvider: _selectedCaType === 'pension' ? dom.caPensionProvider.value : '',
+      pensionEmployeeContrib: _selectedCaType === 'pension' ? (parseFloat(dom.caPensionEmployee.value) || 0) : 0,
+      pensionEmployerContrib: _selectedCaType === 'pension' ? (parseFloat(dom.caPensionEmployer.value) || 0) : 0,
+      pensionGrowthRate: _selectedCaType === 'pension' ? (parseFloat(dom.caPensionGrowth.value) || 5) : 0,
+      pensionRetirementAge: _selectedCaType === 'pension' ? (parseInt(dom.caPensionRetirementAge.value) || 67) : 0,
+      savingsGrowthRate: _selectedCaType === 'savings' ? (parseFloat(dom.caSavingsGrowth.value) || 0) : 0,
+    };
+
+    CustomAssets.saveCustomAsset(asset);
+    invalidateCache('assets'); invalidateCache('finance');
+    _closeModal(dom.customAssetModal);
+    _toast(_editingCustomAssetId ? 'Asset updated' : 'Asset added', 'success');
+    _fetchAndRender(false);
+  });
+
+  // Delete button
+  dom.caDeleteBtn.addEventListener('click', () => {
+    if (!_editingCustomAssetId) return;
+    if (!confirm('Delete this asset? This cannot be undone.')) return;
+
+    CustomAssets.deleteCustomAsset(_editingCustomAssetId);
+    invalidateCache('assets'); invalidateCache('finance');
+    _closeModal(dom.customAssetModal);
+    _toast('Asset deleted', 'success');
+    _fetchAndRender(false);
+  });
+
+  // Portfolio button — add/remove from first portfolio (or create one)
+  dom.caPortfolioBtn.addEventListener('click', () => {
+    if (!_editingCustomAssetId) return;
+    const portfolios = Portfolio.getPortfolios();
+    if (portfolios.length === 0) {
+      const p = Portfolio.createPortfolio('Favourites');
+      Portfolio.addAsset(p.id, _editingCustomAssetId);
+      _toast('Added to Favourites', 'success');
+    } else {
+      const added = Portfolio.toggleAssetInPortfolio(portfolios[0].id, _editingCustomAssetId);
+      _toast(added ? 'Added to ' + portfolios[0].name : 'Removed from ' + portfolios[0].name, 'success');
+    }
+    _updateCaPortfolioBtn();
+    _renderPortfolioDropdown();
+  });
+}
+
+function _updateCaPortfolioBtn() {
+  if (!_editingCustomAssetId) {
+    dom.caPortfolioBtn.style.display = 'none';
+    return;
+  }
+  dom.caPortfolioBtn.style.display = 'inline-flex';
+  const portfolios = Portfolio.getPortfolios();
+  const inAny = portfolios.some(p => p.assetIds.includes(_editingCustomAssetId));
+  dom.caPortfolioBtn.classList.toggle('btn-portfolio-active', inAny);
+  dom.caPortfolioBtn.title = inAny ? 'Remove from portfolio' : 'Add to portfolio';
+}
+
+function _updateCaTypeFields() {
+  const isProperty = _selectedCaType === 'property';
+  const isPension = _selectedCaType === 'pension';
+  const isSavings = _selectedCaType === 'savings';
+  const isFinanceType = isPension || isSavings;
+
+  // Show/hide type-specific fields
+  dom.caPropertyFields.classList.toggle('hidden', !isProperty);
+  dom.caPensionFields.classList.toggle('hidden', !isPension);
+  dom.caSavingsGrowthGroup.classList.toggle('hidden', !isSavings);
+  dom.caLocationGroup.style.display = isFinanceType ? 'none' : '';
+
+  // Relabel shared fields for finance context
+  dom.caPurchasePriceLabel.textContent = isPension ? 'Total Contributed' : isSavings ? 'Total Deposited' : 'Purchase Price';
+  dom.caCurrentValueLabel.textContent = isFinanceType ? 'Current Value' : 'Current Value';
+  dom.caPurchaseDateLabel.textContent = isFinanceType ? 'Start Date' : 'Purchase Date';
+
+  // Populate pension provider dropdown
+  if (isPension && dom.caPensionProvider.options.length <= 1) {
+    dom.caPensionProvider.innerHTML = PENSION_PROVIDERS.map(p =>
+      `<option value="${p}">${p}</option>`
+    ).join('');
+  }
+
+  // Update subtype dropdown
+  const types = CUSTOM_ASSET_TYPES[_selectedCaType] || CUSTOM_ASSET_TYPES.other;
+  dom.caSubtype.innerHTML = types.subtypes.map(s =>
+    `<option value="${s}">${s}</option>`
+  ).join('');
+
+  // Clear projection when switching away from pension
+  if (!isPension) dom.caPensionProjection.innerHTML = '';
+}
+
+function _calcPensionProjection() {
+  const currentPot = parseFloat(dom.caCurrentValue.value) || 0;
+  const monthlyEmployee = parseFloat(dom.caPensionEmployee.value) || 0;
+  const monthlyEmployer = parseFloat(dom.caPensionEmployer.value) || 0;
+  const growthRate = parseFloat(dom.caPensionGrowth.value) || 5;
+  const retirementAge = parseInt(dom.caPensionRetirementAge.value) || 67;
+
+  // Estimate current age from purchase date (pension start)
+  const startDate = dom.caPurchaseDate.value;
+  let yearsToRetirement = 30; // default
+  if (startDate) {
+    // Rough: assume they started at ~25-30, use years since start + remaining
+    const startYear = new Date(startDate).getFullYear();
+    const now = new Date().getFullYear();
+    const yearsSinceStart = now - startYear;
+    // Assume average start age 25
+    const estCurrentAge = 25 + yearsSinceStart;
+    yearsToRetirement = Math.max(1, retirementAge - estCurrentAge);
+  }
+
+  const monthlyTotal = monthlyEmployee + monthlyEmployer;
+  const monthlyRate = growthRate / 100 / 12;
+  const months = yearsToRetirement * 12;
+
+  // Future value = currentPot * (1 + r)^n + monthly * [((1+r)^n - 1) / r]
+  let projected;
+  if (monthlyRate > 0) {
+    projected = currentPot * Math.pow(1 + monthlyRate, months) +
+      monthlyTotal * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+  } else {
+    projected = currentPot + monthlyTotal * months;
+  }
+
+  const totalContributions = (parseFloat(dom.caPurchasePrice.value) || 0) + monthlyTotal * months;
+  const sym = document.querySelector('[data-currency].active')?.textContent?.charAt(0) || '£';
+
+  dom.caPensionProjection.innerHTML = `
+    <div class="proj-row"><span class="proj-label">Projected pot at ${retirementAge}</span><span class="proj-value">${sym}${Math.round(projected).toLocaleString()}</span></div>
+    <div class="proj-row"><span class="proj-label">Years to retirement</span><span>${yearsToRetirement}</span></div>
+    <div class="proj-row"><span class="proj-label">Monthly total</span><span>${sym}${monthlyTotal.toLocaleString()}/mo</span></div>
+    <div class="proj-row"><span class="proj-label">Growth assumption</span><span>${growthRate}% p.a.</span></div>
+  `;
+}
+
+function _openCustomAssetForAdd() {
+  _editingCustomAssetId = null;
+  dom.customAssetTitle.textContent = 'Add Asset';
+  dom.caDeleteBtn.style.display = 'none';
+  dom.caPortfolioBtn.style.display = 'none';
+
+  // Reset form
+  dom.caName.value = '';
+  dom.caSubtype.value = '';
+  dom.caPostcode.value = '';
+  dom.caBedrooms.value = '';
+  dom.caPurchasePrice.value = '';
+  dom.caCurrentValue.value = '';
+  dom.caPurchaseDate.value = '';
+  dom.caLocation.value = '';
+  dom.caNotes.value = '';
+  dom.caValuationStatus.textContent = '';
+  // Reset pension fields
+  dom.caPensionProvider.value = '';
+  dom.caPensionEmployee.value = '';
+  dom.caPensionEmployer.value = '';
+  dom.caPensionGrowth.value = '5';
+  dom.caPensionRetirementAge.value = '67';
+  dom.caPensionProjection.innerHTML = '';
+  dom.caSavingsGrowth.value = '';
+
+  // Set type based on active tab
+  _selectedCaType = state.assetClass === 'finance' ? 'pension' : 'property';
+  dom.caTypePills.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.caType === _selectedCaType);
+  });
+  _updateCaTypeFields();
+
+  _openModal(dom.customAssetModal);
+}
+
+function _openCustomAssetForEdit(assetId) {
+  const asset = CustomAssets.getCustomAsset(assetId);
+  if (!asset) return;
+
+  _editingCustomAssetId = assetId;
+  dom.customAssetTitle.textContent = 'Edit Asset';
+  dom.caDeleteBtn.style.display = 'block';
+  _updateCaPortfolioBtn();
+
+  // Populate form
+  dom.caName.value = asset.name || '';
+  dom.caLocation.value = asset.location || '';
+  dom.caPostcode.value = asset.postcode || '';
+  dom.caBedrooms.value = asset.bedrooms || '';
+  dom.caPurchasePrice.value = asset.purchasePrice || '';
+  dom.caCurrentValue.value = asset.currentValue || '';
+  dom.caPurchaseDate.value = asset.purchaseDate || '';
+  dom.caNotes.value = asset.notes || '';
+  dom.caValuationStatus.textContent = '';
+  // Populate pension fields
+  dom.caPensionProvider.value = asset.pensionProvider || '';
+  dom.caPensionEmployee.value = asset.pensionEmployeeContrib || '';
+  dom.caPensionEmployer.value = asset.pensionEmployerContrib || '';
+  dom.caPensionGrowth.value = asset.pensionGrowthRate || '5';
+  dom.caPensionRetirementAge.value = asset.pensionRetirementAge || '67';
+  dom.caPensionProjection.innerHTML = '';
+  dom.caSavingsGrowth.value = asset.savingsGrowthRate || '';
+
+  // Set type pill
+  _selectedCaType = asset.type || 'property';
+  dom.caTypePills.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.caType === _selectedCaType);
+  });
+  _updateCaTypeFields();
+
+  // Set subtype after dropdown is populated
+  dom.caSubtype.value = asset.subtype || '';
+
+  // Run pension projection if editing a pension
+  if (asset.type === 'pension') _calcPensionProjection();
+
+  _openModal(dom.customAssetModal);
+}
+
+
 // ─── View Toggle (Bubble / Table) ───
 
 function _wireViewToggle() {
@@ -956,8 +1669,8 @@ function _renderTable() {
         <div class="table-name-cell">
           ${logo ? `<img class="table-logo" src="${logo}" alt="" loading="lazy" onerror="this.style.display='none'">` : '<div class="table-logo"></div>'}
           <div class="table-name-text">
-            <span class="table-fullname">${a.name}</span>
-            <span class="table-symbol">${a.symbol}</span>
+            <span class="table-fullname">${a.name}${a._isCustom ? '<span class="ca-badge">MY</span>' : ''}</span>
+            <span class="table-symbol">${a._isCustom ? (a._typeIcon || '') + ' ' + a.symbol : a.symbol}</span>
           </div>
         </div>
       </td>
@@ -1298,12 +2011,27 @@ function _handleAuthStateChange(user) {
     }).catch(e => {
       console.warn('[app] Portfolio cloud sync failed:', e.message);
     });
+
+    // Sync custom assets to cloud
+    const localCustomAssets = CustomAssets.loadCustomAssets();
+    syncLocalCustomAssetsToCloud(localCustomAssets).then(() => {
+      return loadCustomAssetsFromCloud();
+    }).then(cloudCustomAssets => {
+      if (cloudCustomAssets) {
+        CustomAssets.setCloudMode(user.uid, cloudCustomAssets);
+        invalidateCache('assets'); invalidateCache('finance');
+        _fetchAndRender(false);
+      }
+    }).catch(e => {
+      console.warn('[app] Custom assets cloud sync failed:', e.message);
+    });
   } else {
     // Signed out
     dom.signinBtn.classList.remove('hidden');
     dom.userMenu.classList.add('hidden');
     dom.userMenu.classList.remove('open');
     Portfolio.setLocalMode();
+    CustomAssets.setLocalMode();
     _renderPortfolioDropdown();
   }
 }

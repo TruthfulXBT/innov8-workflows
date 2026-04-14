@@ -28,9 +28,14 @@ export const ASSET_CLASSES = {
     icon: '🏠',
     requiresKey: true,
   },
-  property: {
-    label: 'Property',
+  assets: {
+    label: 'Assets',
     icon: '🏡',
+    requiresKey: false,
+  },
+  finance: {
+    label: 'Finance',
+    icon: '🏦',
     requiresKey: false,
   },
 };
@@ -63,6 +68,7 @@ export const BUBBLE = {
 export const API = {
   COINGECKO_BASE: 'https://api.coingecko.com/api/v3',
   FMP_BASE: 'https://financialmodelingprep.com/api/v3',
+  LAND_REGISTRY: 'https://landregistry.data.gov.uk/data/ppi/transaction-record.json',
 
   COMMODITY_SYMBOLS: [
     'GLD',  // Gold
@@ -124,7 +130,8 @@ export const CACHE_TTL = {
   stocks: 300_000,
   commodities: 300_000,
   realestate: 300_000,
-  property: 3600_000, // 1 hour — property data doesn't change often
+  assets: 3600_000,  // 1 hour — property/asset data doesn't change often
+  finance: 3600_000, // 1 hour — pension/savings data doesn't change often
 };
 
 // ─── LocalStorage keys ───
@@ -133,7 +140,28 @@ export const STORAGE = {
   PORTFOLIOS: 'innov8-bubbles-portfolios',
   SETTINGS: 'innov8-bubbles-settings',
   AUTH_USER: 'innov8-bubbles-auth-user',
+  CUSTOM_ASSETS: 'innov8-bubbles-custom-assets',
 };
+
+// ─── Custom Asset Types ───
+export const CUSTOM_ASSET_TYPES = {
+  property:  { label: 'Property',        icon: '🏠', tab: 'assets',  subtypes: ['Detached', 'Semi-Detached', 'Terraced', 'Flat', 'Bungalow', 'Other'] },
+  pension:   { label: 'Pension',         icon: '🏦', tab: 'finance', subtypes: ['Workplace DC', 'SIPP', 'Defined Benefit', 'State Pension', 'SSAS', 'Stakeholder', 'Other'] },
+  vehicle:   { label: 'Vehicle',         icon: '🚗', tab: 'assets',  subtypes: ['Car', 'Motorcycle', 'Van', 'Other'] },
+  watch:     { label: 'Watch',           icon: '⌚', tab: 'assets',  subtypes: ['Luxury', 'Vintage', 'Smart', 'Other'] },
+  art:       { label: 'Art',             icon: '🎨', tab: 'assets',  subtypes: ['Painting', 'Sculpture', 'Print', 'Other'] },
+  business:  { label: 'Business Equity', icon: '🏢', tab: 'assets',  subtypes: ['Ltd Company', 'Partnership', 'Sole Trader', 'Other'] },
+  savings:   { label: 'Savings',         icon: '💰', tab: 'finance', subtypes: ['Cash ISA', 'Savings Account', 'Premium Bonds', 'Other'] },
+  other:     { label: 'Other',           icon: '📦', tab: 'assets',  subtypes: ['Collectible', 'Jewellery', 'Equipment', 'Other'] },
+};
+
+// ─── Pension Providers (UK) ───
+export const PENSION_PROVIDERS = [
+  'Workplace (auto-enrol)', 'Aviva', 'Scottish Widows', 'Legal & General', 'Royal London',
+  'Standard Life', 'Nest', 'Aegon', 'Fidelity', 'Hargreaves Lansdown',
+  'AJ Bell', 'Vanguard', 'Interactive Investor', 'PensionBee', 'Nutmeg',
+  'Smart Pension', 'The People\'s Pension', 'NOW: Pensions', 'State Pension (DWP)', 'Other',
+];
 
 // ─── Firebase Config ───
 // Replace with your Firebase project config from Firebase Console → Project Settings
@@ -157,6 +185,16 @@ export const STRIPE_CONFIG = {
     { days: 30, label: '30 Days', price: '£99',  priceId: 'price_1TLhtSLwaoUSAyt5ytLH6hiZ', paymentLink: 'https://buy.stripe.com/4gMfZi98uf2Eg0ncjVe3e02' },
   ],
 };
+
+// ─── Sponsored Bubble Pricing ───
+// Payment links are placeholders — create in Stripe dashboard and replace
+export const SPONSORED_PRICES = [
+  { days: 1,  label: '1 Day',    price: '£500',   priceId: 'TBD', paymentLink: '#' },
+  { days: 2,  label: '2 Days',   price: '£800',   priceId: 'TBD', paymentLink: '#' },
+  { days: 7,  label: '1 Week',   price: '£1,500', priceId: 'TBD', paymentLink: '#' },
+  { days: 14, label: '2 Weeks',  price: '£3,000', priceId: 'TBD', paymentLink: '#' },
+  { days: 30, label: '1 Month',  price: '£5,000', priceId: 'TBD', paymentLink: '#' },
+];
 
 // ─── Color Schemes ───
 export const COLOR_SCHEMES = {

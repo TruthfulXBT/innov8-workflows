@@ -2,7 +2,46 @@
    data-service.js — API fetching, normalization, caching
    ============================================================ */
 
-import { API, CACHE_TTL, STORAGE, SAMPLE_DATA } from './config.js';
+import { API, CACHE_TTL, STORAGE, SAMPLE_DATA, CUSTOM_ASSET_TYPES } from './config.js';
+import { getCustomAssetsNormalized } from './custom-assets.js';
+import { fetchApprovedSponsored } from './auth.js';
+
+// ─── Sponsored Bubbles Cache ───
+let _sponsoredCache = { data: [], timestamp: 0 };
+const SPONSORED_TTL = 300_000; // 5 min
+
+export async function getSponsoredBubbles() {
+  if (Date.now() - _sponsoredCache.timestamp < SPONSORED_TTL && _sponsoredCache.data.length > 0) {
+    return _sponsoredCache.data;
+  }
+  try {
+    const approved = await fetchApprovedSponsored();
+    const bubbles = approved.map(s => ({
+      id: 'sp_' + s.id,
+      symbol: (s.symbol || s.name || '').replace('$', '').slice(0, 6).toUpperCase(),
+      name: s.name || '',
+      assetClass: 'crypto', // show on crypto tab primarily
+      price: s.price || 0,
+      marketCap: s.price ? s.price * 1e9 : 1e9, // give them decent bubble size
+      volume24h: 0,
+      change1h: s.change24h || 0,
+      change24h: s.change24h || 0,
+      change7d: s.change24h || 0,
+      change30d: s.change24h || 0,
+      change1y: s.change24h || 0,
+      image: s.logoUrl || '',
+      _isSponsored: true,
+      _sponsoredUrl: s.url || '#',
+      _sponsoredBadge: s.badge || 'new-drop',
+      _sponsoredDescription: s.description || '',
+    }));
+    _sponsoredCache = { data: bubbles, timestamp: Date.now() };
+    return bubbles;
+  } catch (e) {
+    console.warn('[data-service] Failed to fetch sponsored:', e.message);
+    return _sponsoredCache.data;
+  }
+}
 
 // ─── Cache ───
 const cache = new Map(); // key → { data, timestamp }
@@ -50,11 +89,11 @@ export async function fetchAssets(assetClass) {
 }
 
 async function _fetchAll() {
-  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate', 'property'];
+  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate', 'assets', 'finance'];
   const hasFmpKey = !!localStorage.getItem(STORAGE.FMP_KEY);
 
-  // Only fetch classes we have keys for
-  const toFetch = classes.filter(c => c === 'crypto' || hasFmpKey);
+  // Only fetch classes we have keys for (crypto, assets, finance don't need FMP key)
+  const toFetch = classes.filter(c => c === 'crypto' || c === 'assets' || c === 'finance' || hasFmpKey);
 
   const results = await Promise.allSettled(
     toFetch.map(c => fetchAssets(c))
@@ -71,13 +110,13 @@ async function _fetchAll() {
   }
 
   // If we got no FMP data, add sample data for those classes
+  // Note: don't add property — it's already included via the 'assets' class fetch above
   if (!hasFmpKey) {
     allData = allData.concat(
       SAMPLE_DATA.indices || [],
       SAMPLE_DATA.stocks || [],
       SAMPLE_DATA.commodities || [],
-      SAMPLE_DATA.realestate || [],
-      SAMPLE_DATA.property || []
+      SAMPLE_DATA.realestate || []
     );
     anySample = true;
   }
@@ -106,9 +145,23 @@ async function _doFetch(assetClass, cacheKey) {
       case 'realestate':
         data = await _fetchRealEstate();
         break;
-      case 'property':
-        // Property data is static/sample — no live API
-        return { data: SAMPLE_DATA.property || [], isSample: true };
+      case 'assets': {
+        // Assets tab: regional property data + custom assets (property, vehicle, watch, art, business, other)
+        const sampleProperty = SAMPLE_DATA.property || [];
+        const assetCustom = getCustomAssetsNormalized().filter(a => {
+          const typeInfo = CUSTOM_ASSET_TYPES[a._type];
+          return !typeInfo || typeInfo.tab === 'assets';
+        });
+        return { data: [...sampleProperty, ...assetCustom], isSample: assetCustom.length === 0 };
+      }
+      case 'finance': {
+        // Finance tab: pensions + savings (no sample data, purely user-added)
+        const financeCustom = getCustomAssetsNormalized().filter(a => {
+          const typeInfo = CUSTOM_ASSET_TYPES[a._type];
+          return typeInfo && typeInfo.tab === 'finance';
+        });
+        return { data: financeCustom, isSample: false };
+      }
       default:
         throw new Error('Unknown asset class: ' + assetClass);
     }
@@ -289,4 +342,10 @@ async function _fetchWithTimeout(url, ms = 5000) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ─── Cache Invalidation (used by custom assets) ───
+
+export function invalidateCache(assetClass) {
+  cache.delete(getCacheKey(assetClass));
 }
