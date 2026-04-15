@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MarketBubbles</string>
+    <string name="title_activity_main">MarketBubbles</string>
+    <string name="package_name">com.marketbubbles.app</string>
+    <string name="custom_url_scheme">com.marketbubbles.app</string>
+</resources>
