@@ -32,7 +32,7 @@
   <meta name="mobile-web-app-capable" content="yes">
 
   <!-- Favicon + App Icons -->
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
@@ -74,7 +74,7 @@
   <header id="header" class="header">
     <div class="header-left">
       <div class="logo">
-        <img class="logo-img" src="logo-header.png" alt="MarketBubbles" width="28" height="28">
+        <img class="logo-img" src="logo-header.png" alt="MarketBubbles" width="38" height="38">
         <span class="logo-text">Market<span class="logo-accent">Bubbles</span></span>
       </div>
     </div>
@@ -1010,7 +1010,7 @@
   <!-- ─── Service Worker Registration + Cache Buster ─── -->
   <script>
     (function() {
-      var APP_VERSION = 31;
+      var APP_VERSION = 32;
       var stored = parseInt(localStorage.getItem('innov8-app-version') || '0');
       if (stored < APP_VERSION) {
         // Force purge all old caches and unregister stale service workers
