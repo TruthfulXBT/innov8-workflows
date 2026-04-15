@@ -1722,7 +1722,10 @@ textarea.form-input {
 }
 
 
-/* ─── Sponsored Launches Strip ─── */
+/* ─── New Launches pill ─── */
+.pill-launch.active { background: rgba(212, 160, 23, 0.25); color: #d4a017; }
+
+/* ─── Sponsored Launches Strip (removed — now a tab) ─── */
 .sponsored-strip {
   position: fixed;
   top: calc(var(--header-height) + var(--ticker-height));
@@ -1873,6 +1876,247 @@ textarea.form-input {
   color: #d4a017 !important;
   font-weight: 600;
 }
+
+/* ─── Holdings Form Popover ─── */
+.holdings-form-popover {
+  position: fixed;
+  z-index: 650;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 14px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.holdings-form-popover.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.95);
+}
+
+.holdings-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.holdings-form-title {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.holdings-form-asset {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.holdings-form-asset:empty { display: none; }
+.holdings-form-select {
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+}
+.holdings-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.holdings-form-row {
+  display: flex;
+  gap: 8px;
+}
+.holdings-form-row .holdings-field { flex: 1; }
+.holdings-field span {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 3px;
+}
+.holdings-field .form-input {
+  font-size: 0.8rem;
+  padding: 7px 10px;
+}
+.holdings-form-actions {
+  display: flex;
+  gap: 6px;
+}
+.holdings-form-actions .btn { flex: 1; text-align: center; }
+
+@media (max-width: 768px) {
+  .holdings-form-popover {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: translateY(0);
+  }
+  .holdings-form-popover.hidden { transform: translateY(100%); }
+}
+
+/* ─── Holdings Table Columns ─── */
+.col-holdings { display: none; }
+.asset-table.portfolio-active .col-holdings { display: table-cell; }
+th.col-holdings { font-size: 0.7rem; }
+td.col-holdings { font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; }
+td.col-holdings-pl { font-weight: 600; }
+
+
+/* ─── Net Worth FAB + Panel ─── */
+.networth-fab {
+  position: fixed;
+  bottom: 44px;
+  right: 16px;
+  z-index: 90;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.networth-fab:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(234, 88, 12, 0.5); }
+.networth-fab:active { transform: scale(0.95); }
+
+.networth-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 16px;
+  z-index: 91;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s, transform 0.2s;
+  overflow: hidden;
+}
+.networth-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.95);
+}
+
+.networth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 8px;
+}
+.networth-header h3 {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.networth-total {
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent);
+  padding: 0 16px;
+  line-height: 1.2;
+}
+
+.networth-change {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 2px 16px 12px;
+}
+
+.networth-breakdown {
+  padding: 0 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.nw-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.nw-row-label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.nw-row-icon { font-size: 0.9rem; }
+.nw-row-value { font-weight: 700; color: var(--text); }
+.nw-row-change { font-size: 0.65rem; margin-left: 4px; }
+.nw-row-change.pos { color: var(--green); }
+.nw-row-change.neg { color: var(--red); }
+
+.networth-hint {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+  padding: 6px 16px 12px;
+  margin: 0;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .networth-panel { left: 16px; right: 16px; width: auto; bottom: 90px; }
+  .networth-fab { bottom: 36px; right: 12px; width: 42px; height: 42px; }
+}
+
+
+/* ─── Sponsored Detail Panel Section ─── */
+.detail-sponsored-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.detail-sponsored-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.detail-sponsored-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #d4a017;
+  letter-spacing: 1px;
+}
+.detail-sponsored-desc {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.detail-visit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  background: #d4a017;
+  color: #0b1120;
+  font-weight: 700;
+}
+.detail-visit-btn:hover { background: #b8891a; }
+
 
 @keyframes sp-glow-pulse {
   0%, 100% { box-shadow: 0 0 20px rgba(212,160,23,0.5), 0 0 40px rgba(212,160,23,0.2); }

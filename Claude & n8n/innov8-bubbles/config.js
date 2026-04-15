@@ -38,6 +38,11 @@ export const ASSET_CLASSES = {
     icon: '🏦',
     requiresKey: false,
   },
+  launches: {
+    label: 'New Launches',
+    icon: '🚀',
+    requiresKey: false,
+  },
 };
 
 export const TIME_PERIODS = [
@@ -132,6 +137,7 @@ export const CACHE_TTL = {
   realestate: 300_000,
   assets: 3600_000,  // 1 hour — property/asset data doesn't change often
   finance: 3600_000, // 1 hour — pension/savings data doesn't change often
+  launches: 300_000,  // 5 min — sponsored launches refresh frequently
 };
 
 // ─── LocalStorage keys ───

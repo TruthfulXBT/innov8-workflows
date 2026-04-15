@@ -35,12 +35,37 @@ export async function getSponsoredBubbles() {
       _sponsoredBadge: s.badge || 'new-drop',
       _sponsoredDescription: s.description || '',
     }));
-    _sponsoredCache = { data: bubbles, timestamp: Date.now() };
-    return bubbles;
+    // Fall back to demo if no real sponsors yet
+    const result = bubbles.length > 0 ? bubbles : _demoSponsored();
+    _sponsoredCache = { data: result, timestamp: Date.now() };
+    return result;
   } catch (e) {
     console.warn('[data-service] Failed to fetch sponsored:', e.message);
-    return _sponsoredCache.data;
+    return _sponsoredCache.data.length ? _sponsoredCache.data : _demoSponsored();
   }
+}
+
+// Demo sponsored bubble — remove once real Stripe payments are flowing
+function _demoSponsored() {
+  return [{
+    id: 'sp_demo_lunar',
+    symbol: '$LUNAR',
+    name: 'Lunar Protocol',
+    assetClass: 'crypto',
+    price: 0.045,
+    marketCap: 5_000_000_000,
+    volume24h: 820_000_000,
+    change1h: 12.3,
+    change24h: 142.5,
+    change7d: 310.8,
+    change30d: 142.5,
+    change1y: 142.5,
+    image: '',
+    _isSponsored: true,
+    _sponsoredUrl: 'https://innov8-bubbles.vercel.app',
+    _sponsoredBadge: 'new-drop',
+    _sponsoredDescription: 'AI-powered DeFi launching May 2026 — Early access live',
+  }];
 }
 
 // ─── Cache ───
@@ -89,11 +114,11 @@ export async function fetchAssets(assetClass) {
 }
 
 async function _fetchAll() {
-  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate', 'assets', 'finance'];
+  const classes = ['crypto', 'indices', 'stocks', 'commodities', 'realestate', 'assets', 'finance', 'launches'];
   const hasFmpKey = !!localStorage.getItem(STORAGE.FMP_KEY);
 
   // Only fetch classes we have keys for (crypto, assets, finance don't need FMP key)
-  const toFetch = classes.filter(c => c === 'crypto' || c === 'assets' || c === 'finance' || hasFmpKey);
+  const toFetch = classes.filter(c => c === 'crypto' || c === 'assets' || c === 'finance' || c === 'launches' || hasFmpKey);
 
   const results = await Promise.allSettled(
     toFetch.map(c => fetchAssets(c))
@@ -153,6 +178,11 @@ async function _doFetch(assetClass, cacheKey) {
           return !typeInfo || typeInfo.tab === 'assets';
         });
         return { data: [...sampleProperty, ...assetCustom], isSample: assetCustom.length === 0 };
+      }
+      case 'launches': {
+        // New Launches tab: sponsored bubbles only
+        const sponsored = await getSponsoredBubbles();
+        return { data: sponsored, isSample: false };
       }
       case 'finance': {
         // Finance tab: pensions + savings (no sample data, purely user-added)

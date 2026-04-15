@@ -90,6 +90,7 @@
         <button class="pill" data-class="realestate">Real Estate</button>
         <button class="pill" data-class="assets">Assets</button>
         <button class="pill" data-class="finance">Finance</button>
+        <button class="pill pill-launch" data-class="launches">New Launches</button>
         <button class="pill pill-add" id="add-custom-asset-btn" title="Add custom asset">+</button>
       </div>
 
@@ -267,14 +268,6 @@
     </div>
   </div>
 
-  <!-- ─── Sponsored Launches Strip ─── -->
-  <div class="sponsored-strip hidden" id="sponsored-strip">
-    <div class="sponsored-strip-label">NEW LAUNCHES</div>
-    <div class="sponsored-strip-scroll" id="sponsored-strip-content">
-      <!-- Sponsored items injected by JS -->
-    </div>
-  </div>
-
   <!-- ─── Canvas Container ─── -->
   <main class="canvas-container" id="canvas-container">
     <canvas id="bubble-canvas"></canvas>
@@ -304,6 +297,9 @@
               <th class="col-rank">#</th>
               <th class="col-name sortable" data-sort="name">Name</th>
               <th class="col-price sortable" data-sort="price">Price</th>
+              <th class="col-holdings sortable" data-sort="holdingsQty">Qty</th>
+              <th class="col-holdings sortable" data-sort="holdingsValue">Value</th>
+              <th class="col-holdings sortable" data-sort="holdingsPL">P&L</th>
               <th class="col-change sortable" data-sort="change1h">1H</th>
               <th class="col-change sortable" data-sort="change24h">24H</th>
               <th class="col-change sortable" data-sort="change7d">7D</th>
@@ -388,6 +384,38 @@
       </div>
     </div>
   </aside>
+
+  <!-- ─── Holdings Form Popover ─── -->
+  <div class="holdings-form-popover hidden" id="holdings-form-popover">
+    <div class="holdings-form-header">
+      <span class="holdings-form-title" id="holdings-form-title">Add Holding</span>
+      <button class="icon-btn holdings-form-close" id="holdings-form-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="holdings-form-asset" id="holdings-form-asset"></div>
+    <select id="holdings-form-portfolio" class="form-input holdings-form-select"></select>
+    <div class="holdings-form-fields">
+      <div class="holdings-form-row">
+        <label class="holdings-field">
+          <span>Quantity</span>
+          <input type="number" id="holdings-qty" class="form-input" step="any" min="0" placeholder="e.g. 1.5">
+        </label>
+        <label class="holdings-field">
+          <span>Buy Price</span>
+          <input type="number" id="holdings-price" class="form-input" step="any" min="0" placeholder="e.g. 65000">
+        </label>
+      </div>
+      <label class="holdings-field">
+        <span>Buy Date</span>
+        <input type="date" id="holdings-date" class="form-input">
+      </label>
+    </div>
+    <div class="holdings-form-actions">
+      <button class="btn btn-primary btn-sm" id="holdings-form-save">Add Holding</button>
+      <button class="btn btn-sm" id="holdings-form-track">Just Track</button>
+    </div>
+  </div>
 
   <!-- ─── Settings Modal ─── -->
   <div class="modal-overlay hidden" id="settings-modal">
@@ -897,6 +925,27 @@
     </div>
   </footer>
 
+  <!-- ─── Net Worth FAB ─── -->
+  <button class="networth-fab" id="networth-fab" title="My Net Worth">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+  </button>
+
+  <!-- ─── Net Worth Panel ─── -->
+  <div class="networth-panel hidden" id="networth-panel">
+    <div class="networth-header">
+      <h3>My Net Worth</h3>
+      <button class="icon-btn" id="networth-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="networth-total" id="networth-total">£0</div>
+    <div class="networth-change" id="networth-change"></div>
+    <div class="networth-breakdown" id="networth-breakdown">
+      <!-- Populated by JS -->
+    </div>
+    <p class="networth-hint">Based on your custom assets in Assets + Finance tabs</p>
+  </div>
+
   <!-- ─── PWA Install Banner ─── -->
   <div class="pwa-install-banner hidden" id="pwa-install-banner">
     <div class="pwa-install-inner">
@@ -939,7 +988,7 @@
   <!-- ─── Service Worker Registration + Cache Buster ─── -->
   <script>
     (function() {
-      var APP_VERSION = 6;
+      var APP_VERSION = 11;
       var stored = parseInt(localStorage.getItem('innov8-app-version') || '0');
       if (stored < APP_VERSION) {
         // Force purge all old caches and unregister stale service workers

@@ -120,7 +120,7 @@ export async function savePortfolioToCloud(portfolio) {
     await _db.collection('users').doc(_currentUser.uid)
       .collection('portfolios').doc(portfolio.id).set({
         name: portfolio.name,
-        assetIds: portfolio.assetIds,
+        holdings: portfolio.holdings || [],
         createdAt: portfolio.createdAt || Date.now(),
       }, { merge: true });
   } catch (e) {

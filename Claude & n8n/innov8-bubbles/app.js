@@ -4,7 +4,7 @@
 
 import { ASSET_CLASSES, STORAGE, STRIPE_CONFIG, AD_BADGE_TYPES, CURRENCIES, COLOR_SCHEMES, CUSTOM_ASSET_TYPES, PENSION_PROVIDERS, SPONSORED_PRICES, formatPrice, formatLargeNumber, formatChange, getLogoUrl, setColorScheme, getColorScheme } from './config.js';
 import { BubbleEngine } from './bubble-engine.js';
-import { fetchAssets, invalidateCache, getSponsoredBubbles } from './data-service.js';
+import { fetchAssets, invalidateCache } from './data-service.js';
 import * as Portfolio from './portfolio.js';
 import * as CustomAssets from './custom-assets.js';
 import { initFirebase, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut as firebaseSignOut, onAuthChange, getCurrentUser, isSignedIn, getUserInitial, getUserDisplayName, fetchApprovedAds, fetchApprovedSponsored, syncLocalPortfoliosToCloud, loadPortfoliosFromCloud, uploadAdLogo, loadCustomAssetsFromCloud, syncLocalCustomAssetsToCloud } from './auth.js';
@@ -240,35 +240,6 @@ async function _initTicker() {
 }
 
 
-// ─── Sponsored Launches Strip ───
-
-function _initSponsoredStrip(sponsoredBubbles) {
-  const strip = document.getElementById('sponsored-strip');
-  const content = document.getElementById('sponsored-strip-content');
-  if (!strip || !content) return;
-
-  if (!sponsoredBubbles || sponsoredBubbles.length === 0) {
-    strip.classList.add('hidden');
-    document.body.classList.remove('sponsored-strip-active');
-    return;
-  }
-
-  content.innerHTML = sponsoredBubbles.map(s => generateSponsoredItemHTML({
-    name: s.name,
-    symbol: s.symbol,
-    url: s._sponsoredUrl,
-    logoUrl: s.image,
-    badge: s._sponsoredBadge,
-    badgeText: (AD_BADGE_TYPES.find(b => b.value === s._sponsoredBadge) || AD_BADGE_TYPES[0]).badgeText,
-    change24h: s.change24h,
-    description: s._sponsoredDescription,
-  })).join('');
-
-  strip.classList.remove('hidden');
-  document.body.classList.add('sponsored-strip-active');
-}
-
-
 // ─── Sponsored Modal ───
 
 let _spState = { step: 1, durationIndex: 0, logoFile: null, logoUrl: null };
@@ -488,6 +459,8 @@ function _init() {
     _wireCustomAssetModal();
     _wireViewToggle();
     _wireShareButton();
+    _wireHoldingsForm();
+    _wireNetWorthPanel();
     _wireKeyboardShortcuts();
     _wireVisibilityThrottle();
     _initTicker();
@@ -529,17 +502,8 @@ async function _fetchAndRender(showLoader = true) {
 
   try {
     const { data, isSample } = await fetchAssets(assetClass);
-
-    // Merge sponsored bubbles into every view
-    const sponsored = await getSponsoredBubbles();
-    const sponsoredIds = new Set(sponsored.map(s => s.id));
-    const merged = [...data.filter(a => !sponsoredIds.has(a.id)), ...sponsored];
-
-    state.allAssets = merged;
+    state.allAssets = data;
     state.isSample = isSample;
-
-    // Update sponsored strip
-    _initSponsoredStrip(sponsored);
 
     // Ensure canvas is sized correctly
     engine.resize();
@@ -569,7 +533,7 @@ function _applyFilters() {
   if (state.activePortfolioId && state.assetClass !== 'assets' && state.assetClass !== 'finance') {
     const portfolio = Portfolio.getActivePortfolio();
     if (portfolio) {
-      const idSet = new Set(portfolio.assetIds);
+      const idSet = new Set(Portfolio.getAssetIds(portfolio));
       const customInPortfolio = CustomAssets.getCustomAssetsNormalized()
         .filter(a => idSet.has(a.id));
       if (customInPortfolio.length > 0) {
@@ -586,7 +550,7 @@ function _applyFilters() {
   if (state.activePortfolioId) {
     const portfolio = Portfolio.getActivePortfolio();
     if (portfolio) {
-      const idSet = new Set(portfolio.assetIds);
+      const idSet = new Set(Portfolio.getAssetIds(portfolio));
       assets = assets.filter(a => idSet.has(a.id));
     }
   }
@@ -609,6 +573,27 @@ function _applyFilters() {
     );
   }
 
+  // Enrich assets with holdings data when a portfolio is active
+  if (state.activePortfolioId) {
+    const portfolio = Portfolio.getActivePortfolio();
+    if (portfolio) {
+      const priceMap = {};
+      assets.forEach(a => { priceMap[a.id] = a.price; });
+      const summary = Portfolio.getPortfolioSummary(portfolio, priceMap);
+      const assetMap = new Map(summary.assetSummaries.map(s => [s.assetId, s]));
+      assets.forEach(a => {
+        const s = assetMap.get(a.id);
+        if (s) {
+          a._holdingsQty = s.totalQty;
+          a._holdingsValue = s.value;
+          a._holdingsPL = s.pl;
+          a._holdingsPLPercent = s.plPercent;
+          a._holdingsAvgCost = s.avgCost;
+        }
+      });
+    }
+  }
+
   state.filteredAssets = assets;
 
   // Update filter count
@@ -625,7 +610,10 @@ function _applyFilters() {
   const emptyTitle = $('#empty-title');
   const emptySub = $('#empty-subtitle');
   if (assets.length === 0) {
-    if (state.assetClass === 'finance') {
+    if (state.assetClass === 'launches') {
+      emptyTitle.textContent = '🚀 No sponsored launches yet';
+      emptySub.innerHTML = 'Promote your token, ICO or project here<br><button class="btn btn-primary btn-sm" style="margin-top:12px;background:#d4a017" onclick="document.getElementById(\'user-promote-launch\').click()">Promote a Launch — from £500</button>';
+    } else if (state.assetClass === 'finance') {
       emptyTitle.textContent = '🏦 No financial assets yet';
       emptySub.innerHTML = 'Track your pensions, savings & ISAs<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="document.getElementById(\'add-custom-asset-btn\').click()">+ Add Pension or Savings</button>';
     } else if (state.assetClass === 'assets' && state.allAssets.length === 0) {
@@ -757,7 +745,7 @@ function _renderPortfolioDropdown() {
 
   // Desktop dropdown
   dom.portfolioList.innerHTML = portfolios.map(p =>
-    `<button class="dropdown-item ${state.activePortfolioId === p.id ? 'active' : ''}" data-portfolio="${p.id}">${p.name} <span style="color:var(--muted);font-size:0.7rem">(${p.assetIds.length})</span></button>`
+    `<button class="dropdown-item ${state.activePortfolioId === p.id ? 'active' : ''}" data-portfolio="${p.id}">${p.name} <span style="color:var(--muted);font-size:0.7rem">(${Portfolio.getAssetIds(p).length})</span></button>`
   ).join('');
 
   // "All Assets" active state
@@ -767,7 +755,7 @@ function _renderPortfolioDropdown() {
   dom.mobilePortfolioList.innerHTML =
     `<button class="mobile-menu-item ${!state.activePortfolioId ? 'active' : ''}" data-portfolio="all">All Assets</button>` +
     portfolios.map(p =>
-      `<button class="mobile-menu-item ${state.activePortfolioId === p.id ? 'active' : ''}" data-portfolio="${p.id}">${p.name} (${p.assetIds.length})</button>`
+      `<button class="mobile-menu-item ${state.activePortfolioId === p.id ? 'active' : ''}" data-portfolio="${p.id}">${p.name} (${Portfolio.getAssetIds(p).length})</button>`
     ).join('');
 
   // Mobile portfolio click
@@ -828,12 +816,6 @@ function _wireDetailPanel() {
 }
 
 function _showDetail(asset) {
-  // Sponsored bubbles open the project URL
-  if (asset._isSponsored && asset._sponsoredUrl) {
-    window.open(asset._sponsoredUrl, '_blank', 'noopener');
-    return;
-  }
-
   // Custom assets open the edit modal instead of the detail panel
   if (asset._isCustom) {
     _openCustomAssetForEdit(asset._customAssetId);
@@ -863,6 +845,41 @@ function _showDetail(asset) {
   _setChangeEl(dom.detail30d, asset.change30d);
   _setChangeEl(dom.detail1y, asset.change1y);
 
+  // Show/hide sponsored-specific content vs portfolio button
+  const portfolioAdd = document.getElementById('detail-portfolio-add');
+  let sponsoredSection = document.getElementById('detail-sponsored-section');
+
+  if (asset._isSponsored) {
+    // Hide portfolio button for sponsored
+    if (portfolioAdd) portfolioAdd.style.display = 'none';
+
+    // Create or update the sponsored section
+    if (!sponsoredSection) {
+      sponsoredSection = document.createElement('div');
+      sponsoredSection.id = 'detail-sponsored-section';
+      sponsoredSection.className = 'detail-sponsored-section';
+      portfolioAdd.parentElement.insertBefore(sponsoredSection, portfolioAdd);
+    }
+    sponsoredSection.style.display = '';
+
+    const badge = AD_BADGE_TYPES.find(b => b.value === asset._sponsoredBadge) || AD_BADGE_TYPES[0];
+    sponsoredSection.innerHTML = `
+      <div class="detail-sponsored-badge">
+        <span class="sponsored-badge ${badge.value}">${badge.badgeText}</span>
+        <span class="detail-sponsored-label">SPONSORED LAUNCH</span>
+      </div>
+      ${asset._sponsoredDescription ? `<p class="detail-sponsored-desc">${asset._sponsoredDescription}</p>` : ''}
+      <a class="btn btn-primary detail-visit-btn" href="${asset._sponsoredUrl || '#'}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Visit Project
+      </a>
+    `;
+  } else {
+    // Normal asset — show portfolio button, hide sponsored section
+    if (portfolioAdd) portfolioAdd.style.display = '';
+    if (sponsoredSection) sponsoredSection.style.display = 'none';
+  }
+
   p.classList.remove('hidden');
   requestAnimationFrame(() => p.classList.add('open'));
 }
@@ -884,7 +901,7 @@ function _renderPopoverPortfolios() {
   const assetId = state.selectedAsset?.id;
 
   dom.popoverPortfolioList.innerHTML = portfolios.map(p => {
-    const inPortfolio = assetId && p.assetIds.includes(assetId);
+    const inPortfolio = assetId && Portfolio.getAssetIds(p).includes(assetId);
     return `<button class="dropdown-item" data-popover-portfolio="${p.id}" style="${inPortfolio ? 'color:var(--green)' : ''}">
       ${inPortfolio ? '&#10003; ' : ''}${p.name}
     </button>`;
@@ -1029,7 +1046,7 @@ function _renderPortfolioManager() {
   dom.portfolioManagerList.innerHTML = portfolios.map(p => `
     <div class="portfolio-manager-item" data-pid="${p.id}">
       <span class="portfolio-name">${p.name}</span>
-      <span class="portfolio-count">${p.assetIds.length} assets</span>
+      <span class="portfolio-count">${Portfolio.getAssetIds(p).length} assets</span>
       <button class="btn btn-danger btn-sm" data-delete="${p.id}" title="Delete">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
       </button>
@@ -1419,7 +1436,7 @@ function _updateCaPortfolioBtn() {
   }
   dom.caPortfolioBtn.style.display = 'inline-flex';
   const portfolios = Portfolio.getPortfolios();
-  const inAny = portfolios.some(p => p.assetIds.includes(_editingCustomAssetId));
+  const inAny = portfolios.some(p => Portfolio.getAssetIds(p).includes(_editingCustomAssetId));
   dom.caPortfolioBtn.classList.toggle('btn-portfolio-active', inAny);
   dom.caPortfolioBtn.title = inAny ? 'Remove from portfolio' : 'Add to portfolio';
 }
@@ -1642,6 +1659,9 @@ function _renderTable() {
     }
   });
 
+  // Toggle holdings columns visibility
+  dom.assetTable.classList.toggle('portfolio-active', !!state.activePortfolioId);
+
   // Helper: format change with arrow
   const fmtChange = (val, field) => {
     if (val == null || isNaN(val)) return '<span class="table-change table-change-neutral">—</span>';
@@ -1653,7 +1673,7 @@ function _renderTable() {
 
   // Check which assets are in the active portfolio (for star)
   const activePortfolio = Portfolio.getActivePortfolio();
-  const starredIds = new Set(activePortfolio ? activePortfolio.assetIds : []);
+  const starredIds = new Set(activePortfolio ? Portfolio.getAssetIds(activePortfolio) : []);
 
   // Helper: mark the active period column cell
   const activeClass = (field) => field === activeField ? 'col-active-cell' : '';
@@ -1675,6 +1695,9 @@ function _renderTable() {
         </div>
       </td>
       <td class="table-price">${formatPrice(a.price)}</td>
+      <td class="col-holdings">${a._holdingsQty ? a._holdingsQty.toLocaleString('en-US', {maximumFractionDigits: 4}) : '—'}</td>
+      <td class="col-holdings">${a._holdingsValue ? formatPrice(a._holdingsValue) : '—'}</td>
+      <td class="col-holdings col-holdings-pl ${(a._holdingsPL || 0) >= 0 ? 'table-change-pos' : 'table-change-neg'}">${a._holdingsPL != null && a._holdingsQty ? (a._holdingsPL >= 0 ? '+' : '') + formatPrice(a._holdingsPL) : '—'}</td>
       <td class="${activeClass('change1h')}">${fmtChange(a.change1h, 'change1h')}</td>
       <td class="${activeClass('change24h')}">${fmtChange(a.change24h, 'change24h')}</td>
       <td class="${activeClass('change7d')}">${fmtChange(a.change7d, 'change7d')}</td>
@@ -1685,24 +1708,25 @@ function _renderTable() {
     </tr>`;
   }).join('');
 
-  // Star click → add/remove from portfolio
+  // Star click → show holdings form or remove
   dom.assetTableBody.querySelectorAll('.table-star').forEach(star => {
     star.addEventListener('click', (e) => {
       e.stopPropagation();
       const assetId = star.dataset.star;
+      const asset = state.filteredAssets.find(a => a.id === assetId);
       const portfolios = Portfolio.getPortfolios();
-      if (portfolios.length === 0) {
-        // Auto-create a "Favourites" portfolio
-        const p = Portfolio.createPortfolio('Favourites');
-        Portfolio.addAsset(p.id, assetId);
-        _toast('Added to Favourites', 'success');
-      } else {
-        // Toggle in first portfolio
-        const added = Portfolio.toggleAssetInPortfolio(portfolios[0].id, assetId);
-        _toast(added ? 'Added to ' + portfolios[0].name : 'Removed from ' + portfolios[0].name, 'success');
+
+      // If already in first portfolio, remove
+      if (portfolios.length > 0 && Portfolio.isAssetInPortfolio(portfolios[0].id, assetId)) {
+        Portfolio.removeAssetCompletely(portfolios[0].id, assetId);
+        _toast('Removed from ' + portfolios[0].name, 'success');
+        _renderPortfolioDropdown();
+        _renderTable();
+        return;
       }
-      _renderPortfolioDropdown();
-      _renderTable();
+
+      // Otherwise show holdings form
+      _showHoldingsForm(assetId, asset, star);
     });
   });
 
@@ -1717,8 +1741,13 @@ function _renderTable() {
 
 function _getSortedAssets() {
   const assets = [...state.filteredAssets];
-  const { sortBy, sortDir } = state;
+  const { sortDir } = state;
+  let sortBy = state.sortBy;
   const dir = sortDir === 'asc' ? 1 : -1;
+
+  // Map holdings sort keys to enriched properties
+  const holdingsMap = { holdingsQty: '_holdingsQty', holdingsValue: '_holdingsValue', holdingsPL: '_holdingsPL' };
+  if (holdingsMap[sortBy]) sortBy = holdingsMap[sortBy];
 
   assets.sort((a, b) => {
     let va = a[sortBy];
@@ -1741,6 +1770,199 @@ function _getSortedAssets() {
 
 
 // ─── Footer Stats ───
+
+// ─── Holdings Form Popover ───
+
+function _wireHoldingsForm() {
+  const form = $('#holdings-form-popover');
+  if (!form) return;
+
+  $('#holdings-form-close').addEventListener('click', () => _hideHoldingsForm());
+  $('#holdings-form-save').addEventListener('click', () => _submitHoldingsForm(false));
+  $('#holdings-form-track').addEventListener('click', () => _submitHoldingsForm(true));
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!form.classList.contains('hidden') && !form.contains(e.target) && !e.target.closest('.table-star') && !e.target.closest('#add-to-portfolio-btn')) {
+      _hideHoldingsForm();
+    }
+  });
+}
+
+let _holdingsFormAssetId = null;
+
+function _showHoldingsForm(assetId, asset, anchor) {
+  const form = $('#holdings-form-popover');
+  if (!form) return;
+
+  _holdingsFormAssetId = assetId;
+
+  // Set asset display
+  const assetEl = $('#holdings-form-asset');
+  if (assetEl) assetEl.textContent = asset ? `${asset.symbol} — ${asset.name}` : assetId;
+
+  // Populate portfolio dropdown
+  const select = $('#holdings-form-portfolio');
+  let portfolios = Portfolio.getPortfolios();
+  if (portfolios.length === 0) {
+    // Auto-create
+    Portfolio.createPortfolio('Favourites');
+    portfolios = Portfolio.getPortfolios();
+  }
+  select.innerHTML = portfolios.map(p =>
+    `<option value="${p.id}">${p.name}</option>`
+  ).join('');
+
+  // Pre-fill fields
+  $('#holdings-qty').value = '';
+  $('#holdings-price').value = asset ? asset.price : '';
+  $('#holdings-date').value = new Date().toISOString().split('T')[0];
+
+  // Position the form near the anchor
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const formW = 300;
+    let left = rect.right + 8;
+    let top = rect.top - 40;
+    // Keep on screen
+    if (left + formW > window.innerWidth - 16) left = rect.left - formW - 8;
+    if (top < 80) top = 80;
+    if (top + 320 > window.innerHeight) top = window.innerHeight - 340;
+    // On mobile, let CSS handle as bottom sheet
+    if (window.innerWidth < 768) {
+      form.style.left = '';
+      form.style.right = '';
+      form.style.top = '';
+    } else {
+      form.style.left = left + 'px';
+      form.style.top = top + 'px';
+    }
+  }
+
+  form.classList.remove('hidden');
+  $('#holdings-qty').focus();
+}
+
+function _hideHoldingsForm() {
+  const form = $('#holdings-form-popover');
+  if (form) form.classList.add('hidden');
+  _holdingsFormAssetId = null;
+}
+
+function _submitHoldingsForm(justTrack) {
+  if (!_holdingsFormAssetId) return;
+
+  const portfolioId = $('#holdings-form-portfolio').value;
+  if (!portfolioId) return;
+
+  const qty = justTrack ? 0 : (parseFloat($('#holdings-qty').value) || 0);
+  const price = justTrack ? 0 : (parseFloat($('#holdings-price').value) || 0);
+  const date = justTrack ? '' : ($('#holdings-date').value || '');
+
+  Portfolio.addHolding(portfolioId, {
+    assetId: _holdingsFormAssetId,
+    quantity: qty,
+    purchasePrice: price,
+    purchaseDate: date,
+  });
+
+  const pName = Portfolio.getPortfolios().find(p => p.id === portfolioId)?.name || 'Portfolio';
+  _toast(justTrack ? `Tracking in ${pName}` : `Added holding to ${pName}`, 'success');
+
+  _hideHoldingsForm();
+  _renderPortfolioDropdown();
+  if (state.viewMode === 'table') _renderTable();
+}
+
+
+// ─── Net Worth FAB + Panel ───
+
+function _wireNetWorthPanel() {
+  const fab = $('#networth-fab');
+  const panel = $('#networth-panel');
+  const closeBtn = $('#networth-close');
+  if (!fab || !panel) return;
+
+  fab.addEventListener('click', () => {
+    const isOpen = !panel.classList.contains('hidden');
+    if (isOpen) {
+      panel.classList.add('hidden');
+    } else {
+      _updateNetWorthPanel();
+      panel.classList.remove('hidden');
+    }
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => panel.classList.add('hidden'));
+  }
+
+  // Close when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== fab && !fab.contains(e.target)) {
+      panel.classList.add('hidden');
+    }
+  });
+}
+
+function _updateNetWorthPanel() {
+  const assets = CustomAssets.loadCustomAssets();
+  const typeMap = {};
+  let totalValue = 0;
+  let totalPurchase = 0;
+
+  for (const a of assets) {
+    const val = a.currentValue || 0;
+    const purchase = a.purchasePrice || 0;
+    totalValue += val;
+    totalPurchase += purchase;
+
+    const typeInfo = CUSTOM_ASSET_TYPES[a.type] || CUSTOM_ASSET_TYPES.other;
+    const key = a.type || 'other';
+    if (!typeMap[key]) {
+      typeMap[key] = { label: typeInfo.label, icon: typeInfo.icon, value: 0, purchase: 0, count: 0 };
+    }
+    typeMap[key].value += val;
+    typeMap[key].purchase += purchase;
+    typeMap[key].count++;
+  }
+
+  const totalEl = $('#networth-total');
+  const changeEl = $('#networth-change');
+  const breakdownEl = $('#networth-breakdown');
+
+  // Format with currency symbol
+  const sym = document.querySelector('[data-currency].active')?.textContent?.charAt(0) || '£';
+
+  if (totalEl) totalEl.textContent = sym + totalValue.toLocaleString('en-GB', { maximumFractionDigits: 0 });
+
+  if (changeEl) {
+    const gain = totalValue - totalPurchase;
+    const gainPct = totalPurchase > 0 ? ((gain / totalPurchase) * 100).toFixed(1) : '0.0';
+    const isPos = gain >= 0;
+    changeEl.innerHTML = `<span style="color:var(--${isPos ? 'green' : 'red'})">${isPos ? '+' : ''}${sym}${Math.abs(gain).toLocaleString('en-GB', { maximumFractionDigits: 0 })} (${isPos ? '+' : ''}${gainPct}%)</span> total gain/loss`;
+  }
+
+  if (breakdownEl) {
+    if (assets.length === 0) {
+      breakdownEl.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.75rem;padding:16px 0">No custom assets yet.<br>Add assets in the Assets or Finance tab.</p>';
+    } else {
+      const rows = Object.entries(typeMap)
+        .sort((a, b) => b[1].value - a[1].value)
+        .map(([key, t]) => {
+          const gain = t.value - t.purchase;
+          const gainPct = t.purchase > 0 ? ((gain / t.purchase) * 100).toFixed(1) : '0.0';
+          const isPos = gain >= 0;
+          return `<div class="nw-row">
+            <div class="nw-row-label"><span class="nw-row-icon">${t.icon}</span> ${t.label} (${t.count})</div>
+            <div class="nw-row-value">${sym}${t.value.toLocaleString('en-GB', { maximumFractionDigits: 0 })}<span class="nw-row-change ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}${gainPct}%</span></div>
+          </div>`;
+        }).join('');
+      breakdownEl.innerHTML = rows;
+    }
+  }
+}
+
 
 function _updateFooterStats() {
   const assets = state.allAssets;
