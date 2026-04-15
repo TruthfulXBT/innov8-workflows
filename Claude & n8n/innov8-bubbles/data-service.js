@@ -380,42 +380,48 @@ const chartCache = new Map(); // key → { data, timestamp }
 const CHART_TTL = 300_000; // 5 min
 
 export async function fetchChartData(asset, days = 30) {
-  const key = `${asset.id}_${days}`;
+  // Strategy: fetch full history ONCE per asset, then slice locally for any period.
+  // This avoids multiple API calls and rate limiting.
+  const fullKey = `${asset.id}_full`;
 
-  // Check cache
-  const cached = chartCache.get(key);
+  let fullData = null;
+  const cached = chartCache.get(fullKey);
   if (cached && Date.now() - cached.timestamp < CHART_TTL) {
-    return cached.data;
+    fullData = cached.data;
   }
 
-  let points = null;
-
-  try {
-    if (asset._isCustom) {
-      // Custom assets: generate estimated growth curve
-      points = _generateCustomChart(asset, days);
-    } else if (asset.assetClass === 'crypto' || asset.assetClass === 'launches') {
-      points = await _fetchCryptoChart(asset.id, days);
-    } else if (['stocks', 'indices', 'commodities', 'realestate'].includes(asset.assetClass)) {
-      points = await _fetchStockChart(asset.symbol || asset.id, days);
+  if (!fullData) {
+    try {
+      if (asset._isCustom) {
+        fullData = _generateCustomChart(asset, 'max');
+      } else if (asset.assetClass === 'crypto' || asset.assetClass === 'launches') {
+        fullData = await _fetchCryptoChart(asset.id, 365); // Fetch 1 year, covers all periods
+      } else if (['stocks', 'indices', 'commodities', 'realestate'].includes(asset.assetClass)) {
+        fullData = await _fetchStockChart(asset.symbol || asset.id);
+      }
+    } catch (e) {
+      console.warn('[chart] fetch failed:', e.message);
     }
-  } catch (e) {
-    console.warn('[chart] fetch failed:', e.message);
+
+    if (fullData && fullData.length > 0) {
+      chartCache.set(fullKey, { data: fullData, timestamp: Date.now() });
+    }
   }
 
-  if (points && points.length > 0) {
-    chartCache.set(key, { data: points, timestamp: Date.now() });
-  }
+  if (!fullData || fullData.length === 0) return [];
 
-  return points || [];
+  // Slice to requested period
+  if (days === 'max' || days >= 9999) return fullData;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return fullData.filter(p => new Date(p.date) >= cutoff);
 }
 
 async function _fetchCryptoChart(coinId, days) {
   const currency = localStorage.getItem('innov8-bubbles-currency') || 'usd';
-  const daysParam = days === 'max' ? 'max' : days;
-  const url = `${API.COINGECKO_BASE}/coins/${coinId}/market_chart?vs_currency=${currency}&days=${daysParam}`;
+  const url = `${API.COINGECKO_BASE}/coins/${coinId}/market_chart?vs_currency=${currency}&days=${days}`;
 
-  const res = await _fetchWithTimeout(url, 8000);
+  const res = await _fetchWithTimeout(url, 10000);
   if (!res.ok) throw new Error(`CoinGecko chart ${res.status}`);
   const json = await res.json();
 
@@ -427,28 +433,19 @@ async function _fetchCryptoChart(coinId, days) {
   }));
 }
 
-async function _fetchStockChart(symbol, days) {
+async function _fetchStockChart(symbol) {
   const apiKey = _getFmpKey();
   if (!apiKey) return [];
 
   const url = `${API.FMP_BASE}/historical-price-full/${symbol}?apikey=${apiKey}`;
-  const res = await _fetchWithTimeout(url, 8000);
+  const res = await _fetchWithTimeout(url, 10000);
   if (!res.ok) throw new Error(`FMP chart ${res.status}`);
   const json = await res.json();
 
   if (!json.historical || !Array.isArray(json.historical)) return [];
 
   // FMP returns newest first — reverse for chronological order
-  let data = json.historical.reverse();
-
-  // Filter to requested period
-  if (days !== 'max') {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    data = data.filter(d => new Date(d.date) >= cutoff);
-  }
-
-  return data.map(d => ({
+  return json.historical.reverse().map(d => ({
     date: new Date(d.date),
     price: d.close,
   }));

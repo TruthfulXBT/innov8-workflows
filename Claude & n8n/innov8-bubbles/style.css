@@ -1877,6 +1877,58 @@ textarea.form-input {
   font-weight: 600;
 }
 
+/* ─── Detail Holdings Section ─── */
+.detail-holdings-section {
+  background: rgba(234, 88, 12, 0.06);
+  border: 1px solid rgba(234, 88, 12, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+.detail-holdings-header {
+  margin-bottom: 8px;
+}
+.detail-holdings-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.detail-holdings-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-holdings-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.detail-holdings-val {
+  font-weight: 700;
+  color: var(--text);
+}
+.detail-holdings-lots {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(234, 88, 12, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.detail-holding-lot {
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.lot-qty { font-weight: 600; color: var(--text); }
+.lot-pl { margin-left: auto; font-weight: 600; }
+
+
 /* ─── Detail Chart ─── */
 .detail-chart {
   background: var(--bg);

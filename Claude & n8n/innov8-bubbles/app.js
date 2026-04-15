@@ -881,6 +881,9 @@ function _showDetail(asset) {
     if (sponsoredSection) sponsoredSection.style.display = 'none';
   }
 
+  // Show holdings summary if user owns this asset in any portfolio
+  _renderDetailHoldings(asset);
+
   p.classList.remove('hidden');
   requestAnimationFrame(() => p.classList.add('open'));
 
@@ -892,6 +895,101 @@ function _setChangeEl(el, val) {
   el.textContent = formatChange(val);
   el.className = 'detail-stat-value ' + (val == null ? '' : val >= 0 ? 'color-green' : 'color-red');
 }
+
+// ─── Detail Holdings Summary ───
+
+function _renderDetailHoldings(asset) {
+  const container = document.getElementById('detail-actions');
+  if (!container) return;
+
+  // Remove old holdings section if exists
+  let section = document.getElementById('detail-holdings-section');
+  if (section) section.remove();
+
+  // Find all holdings for this asset across all portfolios
+  const portfolios = Portfolio.getPortfolios();
+  const allHoldings = [];
+  for (const p of portfolios) {
+    const lots = Portfolio.getHoldingsForAsset(p.id, asset.id);
+    if (lots.length > 0) {
+      allHoldings.push({ portfolio: p, lots });
+    }
+  }
+
+  if (allHoldings.length === 0) return;
+
+  // Calculate totals
+  const currentPrice = asset.price || 0;
+  let totalQty = 0;
+  let totalCost = 0;
+  for (const { lots } of allHoldings) {
+    for (const h of lots) {
+      totalQty += h.quantity || 0;
+      totalCost += (h.quantity || 0) * (h.purchasePrice || 0);
+    }
+  }
+  const totalValue = totalQty * currentPrice;
+  const totalPL = totalValue - totalCost;
+  const totalPLPct = totalCost > 0 ? ((totalPL / totalCost) * 100).toFixed(1) : '0.0';
+  const avgCost = totalQty > 0 ? totalCost / totalQty : 0;
+  const isPos = totalPL >= 0;
+  const sym = document.querySelector('[data-currency].active')?.textContent?.charAt(0) || '$';
+
+  // Build the HTML
+  section = document.createElement('div');
+  section.id = 'detail-holdings-section';
+  section.className = 'detail-holdings-section';
+
+  let lotsHTML = '';
+  for (const { portfolio, lots } of allHoldings) {
+    for (const h of lots) {
+      if (!h.quantity) continue;
+      const lotVal = h.quantity * currentPrice;
+      const lotCost = h.quantity * (h.purchasePrice || 0);
+      const lotPL = lotVal - lotCost;
+      const lotPos = lotPL >= 0;
+      lotsHTML += `<div class="detail-holding-lot">
+        <span class="lot-qty">${h.quantity.toLocaleString('en-US', {maximumFractionDigits:4})}</span>
+        <span class="lot-at">@ ${sym}${(h.purchasePrice || 0).toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+        <span class="lot-pl ${lotPos ? 'color-green' : 'color-red'}">${lotPos ? '+' : ''}${sym}${Math.abs(lotPL).toLocaleString('en-US', {maximumFractionDigits:0})}</span>
+      </div>`;
+    }
+  }
+
+  section.innerHTML = `
+    <div class="detail-holdings-header">
+      <span class="detail-holdings-label">YOUR POSITION</span>
+    </div>
+    <div class="detail-holdings-summary">
+      <div class="detail-holdings-row">
+        <span>Quantity</span>
+        <span class="detail-holdings-val">${totalQty.toLocaleString('en-US', {maximumFractionDigits:4})}</span>
+      </div>
+      <div class="detail-holdings-row">
+        <span>Avg Cost</span>
+        <span class="detail-holdings-val">${sym}${avgCost.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+      </div>
+      <div class="detail-holdings-row">
+        <span>Value</span>
+        <span class="detail-holdings-val">${sym}${totalValue.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+      </div>
+      <div class="detail-holdings-row">
+        <span>P&L</span>
+        <span class="detail-holdings-val ${isPos ? 'color-green' : 'color-red'}">${isPos ? '+' : ''}${sym}${Math.abs(totalPL).toLocaleString('en-US', {maximumFractionDigits:0})} (${isPos ? '+' : ''}${totalPLPct}%)</span>
+      </div>
+    </div>
+    ${lotsHTML ? `<div class="detail-holdings-lots">${lotsHTML}</div>` : ''}
+  `;
+
+  // Insert before the portfolio add button
+  const portfolioAdd = document.getElementById('detail-portfolio-add');
+  if (portfolioAdd) {
+    container.insertBefore(section, portfolioAdd);
+  } else {
+    container.appendChild(section);
+  }
+}
+
 
 // ─── Detail Chart ───
 
@@ -938,6 +1036,11 @@ async function _renderDetailChart(asset, days = 30) {
 
     if (!points || points.length < 2) {
       canvas.style.display = 'none';
+      if (loading) {
+        const needsKey = ['stocks', 'indices', 'commodities', 'realestate'].includes(asset.assetClass) && !localStorage.getItem('innov8-bubbles-fmp-key');
+        loading.textContent = needsKey ? 'Add FMP API key in Settings for stock charts' : 'No chart data available';
+        loading.classList.remove('hidden');
+      }
       return;
     }
     canvas.style.display = '';
